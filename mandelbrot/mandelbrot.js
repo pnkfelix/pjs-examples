@@ -1,3 +1,4 @@
+/* -*- Mode: js; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
 /*
  * Copyright (c) 2011, Intel Corporation
  * All rights reserved.
@@ -25,6 +26,17 @@
  *
  */
 
+ParallelArray.prototype.getArray =
+    function () {
+        var len = this.length;
+        var ret = new Array(len);
+        for (var i = 0; i < len; i++) {
+            ret[i] = this.get(i);
+        }
+        return ret;
+    };
+
+
 // the below code is based on a WebCL implementation available at
 // http://www.ibiblio.org/e-notes/webcl/mandelbrot.html
 
@@ -47,9 +59,7 @@ function computeColorMap() {
 // this is the actual mandelbrot computation, ported to JavaScript
 // from the WebCL / OpenCL example at 
 // http://www.ibiblio.org/e-notes/webcl/mandelbrot.html
-function computeSet(iv, scale) {
-    var x = iv[1];
-    var y = iv[0];
+function computeSet(x, y, scale) {
     var Cr = (x - 256) / scale + 0.407476;
     var Ci = (y - 256) / scale + 0.234204;
     var I = 0, R = 0, I2 = 0, R2 = 0;
@@ -84,12 +94,34 @@ function writeResult (canvas, mandelbrot) {
     context.putImageData(image, 0, 0);
 }
 
-function render () {
-    var canvas = document.getElementById("canvas");
+function coreRender(kind) {
+    var canvas = document.getElementById("canvas" + kind);
     var scale = 10000*300;
     computeColorMap();
-    var mandelbrot = new ParallelArray([512,512], computeSet, scale);
+    var d1 = new Date();
+    var mode = (kind == "Par") ? "par" : "seq";
+    var mandelbrot = new ParallelArray([512,512], function (x,y) { return computeSet(x, y, scale); }, { mode: mode, expect: "any" } );
+    var d2 = new Date();
     writeResult(canvas, mandelbrot);
+
+    var report = document.getElementById("report");
+    var ptag = document.createElement('p');
+    var text = document.createTextNode(kind + " start:"+d1+" finis:"+d2+" time:" + (d2 - d1));
+    ptag.appendChild(text);
+    report.appendChild(ptag);
+
+    return (d2 - d1);
 }
 
+function renderPar () { return coreRender("Par"); }
 
+function renderSeq () { return coreRender("Seq"); }
+
+function render() {
+  renderPar(); renderSeq();
+  var div = document.getElementById("kernelsource");
+  var ptag = document.createElement("pre");
+  var text = document.createTextNode("" + computeSet);
+  ptag.appendChild(text);
+  div.appendChild(ptag);
+}
