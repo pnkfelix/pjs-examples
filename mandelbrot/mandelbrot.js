@@ -36,6 +36,20 @@ ParallelArray.prototype.getArray =
         return ret;
     };
 
+function Fake2DParallelArray(w, h, f, ignored) {
+    this.width = w;
+    this.height = h;
+    this.array = new Array(w * h);
+    for (var x = 0; x < w; x++) {
+        for (var y = 0; y < h; y++) {
+            this.array[x*h + y] = f(x, y);
+        }
+    }
+}
+
+Fake2DParallelArray.prototype.flatten = function() { return this; }
+Fake2DParallelArray.prototype.getArray = function() { return this.array; }
+
 
 // the below code is based on a WebCL implementation available at
 // http://www.ibiblio.org/e-notes/webcl/mandelbrot.html
@@ -94,6 +108,13 @@ function writeResult (canvas, mandelbrot) {
     context.putImageData(image, 0, 0);
 }
 
+
+function reportWriteJx(jx) { divWriteJx("report", jx); }
+
+function reportTiming(variant, d1, d2) {
+    reportWriteJx(["div", ["code", variant], " time: "+ (d2-d1) +"ms"]);
+}
+
 function coreRender(kind) {
     var canvas = document.getElementById("canvas" + kind);
     var scale = 10000*300;
@@ -103,13 +124,20 @@ function coreRender(kind) {
     var mandelbrot = new ParallelArray([512,512], function (x,y) { return computeSet(x, y, scale); }, { mode: mode, expect: "any" } );
     var d2 = new Date();
     writeResult(canvas, mandelbrot);
+    reportTiming(kind, d1, d2);
+    return (d2 - d1);
+}
 
-    var report = document.getElementById("report");
-    var ptag = document.createElement('p');
-    var text = document.createTextNode(kind + " start:"+d1+" finis:"+d2+" time:" + (d2 - d1));
-    ptag.appendChild(text);
-    report.appendChild(ptag);
-
+function renderHtm() {
+    var canvas = document.getElementById("canvasHtm");
+    var scale = 10000*300;
+    computeColorMap();
+    var d1 = new Date();
+    var mode = "html";
+    var mandelbrot = new Fake2DParallelArray(512,512, function (x,y) { return computeSet(x, y, scale); }, { mode: mode, expect: "any" } );
+    var d2 = new Date();
+    writeResult(canvas, mandelbrot);
+    reportTiming("Htm", d1, d2);
     return (d2 - d1);
 }
 
@@ -117,11 +145,22 @@ function renderPar () { return coreRender("Par"); }
 
 function renderSeq () { return coreRender("Seq"); }
 
+function sigfigs(x, decimals) {
+    var integ = x | 0;
+    var frac  = x - integ;
+    var scale = Math.pow(10, decimals);
+    var cutoff =  Math.floor(frac * scale) / scale;
+    var suffix = (""+cutoff).substring(2);
+    while (suffix.length < decimals)
+        suffix = suffix + "0";
+    return integ + "." + suffix;
+}
+
 function render() {
-  renderPar(); renderSeq();
-  var div = document.getElementById("kernelsource");
-  var ptag = document.createElement("pre");
-  var text = document.createTextNode("" + computeSet);
-  ptag.appendChild(text);
-  div.appendChild(ptag);
+    var parTime = renderPar();
+    var seqTime = renderSeq();
+    var htmTime = renderHtm();
+
+    reportWriteJx(['p', "speedup (seq time/par time): " + sigfigs(seqTime/parTime, 2)]);
+    divWriteJx("kernelsource", ['pre', ""+computeSet]);
 }
