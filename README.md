@@ -1,5 +1,8 @@
 This is a collection of ParallelArray demos.
 
+You can access them (in a browser that has the iontrail code)
+by visiting [pjs-examples](http://pnkfelix.github.com/pjs-examples/index.html).
+
 The initial set of three have been ported directly from
 the [original RiverTrail examples](https://github.com/RiverTrail/RiverTrail).
 
