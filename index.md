@@ -23,5 +23,7 @@ code that is under development, see the
 
  * [Mandelbrot](mandelbrot/mandelbrot.html)
 
+ * [Resize](liquid-resize/resize-demo.html)
+
   </body>
 </html>
