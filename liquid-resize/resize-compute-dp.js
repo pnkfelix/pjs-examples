@@ -105,39 +105,32 @@ function computeEnergy(inPA) {
   return energy;
 }
 
-function findMinIdx(vect, maxX) {
-    var result = 0;
-    var min = vect[0];
-    var minidx = 0;
-    for (var pos = 1; pos < maxX; pos++) {
-        if (vect[pos] < min) {
-            min = vect[pos];
-            minidx = pos;
+function findPathJS(energy) {
+    var imageHeight = energy.length;
+    var imageWidth = energy[0].length;
+    var path = new Array(imageHeight);
+    var y = imageHeight - 1;
+    var minPos = 0;
+    var minEnergy = energy[y][minPos];
+
+    for (var x = 1; x < imageWidth; x++) {
+        if (energy[y][x] < minEnergy) {
+            minEnergy = energy[y][x];
+            minPos = x;
         }
     }
-    return minidx;
-}
-
-function computePath(array, maxX, maxY) {
-    var lineLength = array[0].length;
-    var minidx = findMinIdx(array[maxY - 1], maxX);
-    var path = new Array(maxY);
-
-    var idx = minidx;
-    for (var pos = maxY - 2; pos >= 0; pos--) {
-        var min = idx;
-        var line = array[pos];
-        var val = line[idx];
-        if (idx > 0 && line[idx - 1] < val) {
-            min = idx - 1;
-            val = line[idx - 1];
+    path[y] = minPos;
+    for (y = imageHeight - 2; y >=0; y--) {
+        minEnergy = energy[y][minPos];
+        var line = energy[y];
+        var p = minPos;
+        if (p >= 1 && line[p-1] < minEnergy) {
+            minPos = p-1; minEnergy = line[minPos];
         }
-        if (idx < (maxX - 1) && line[idx + 1] < val) {
-            min = idx + 1;
-            //val = line.get(idx + 1);
+        if (p < imageWidth - 1 && line[p+1] < minEnergy) {
+            minPos = p+1; minEnergy = line[minPos];
         }
-        path[pos] = min;
-        idx = min;
+        path[y] = minPos;
     }
     return path;
 }
@@ -318,7 +311,7 @@ function reduceOneHorizontal(canvas) {
     var t2 = new Date();
     parallelComponentTime += (t2 - t1);
     var energy = computeEnergy(edgesPA);
-    var path = computePath(energy, virtualWidth, virtualHeight);
+    var path = findPathJS(energy);
     var context = canvas.getContext("2d");
     var buf = context.getImageData(0,0,virtualWidth,virtualHeight);
     var res = cutPathHorizontally(buf, path);
@@ -333,7 +326,7 @@ function reduceOneVertical(canvas) {
     var t2 = new Date();
     parallelComponentTime += (t2 - t1);
     var energy = computeEnergy(edgesPA);
-    var path = computePath(energy, virtualHeight, virtualWidth);
+    var path = findPathJS(energy);
     var context = canvas.getContext("2d");
     var buf = context.getImageData(0,0,virtualWidth,virtualHeight);
     var res = cutPathVertically(buf, path);
