@@ -33,6 +33,11 @@ ACM Trans. Graph. 26, 3, Article 10 (July 2007).
 DOI=10.1145/1276377.1276390 http://doi.acm.org/10.1145/1276377.1276390
 **/
 
+var reduceOneHorizontalJS, reduceOneVerticalJS;
+var reduceManyHorizontalJS, reduceManyVerticalJS;
+
+(function () {
+
 function newArray(nrows, ncols) {
     var a = new Array(nrows);
     for (var i = 0; i < nrows; i++) {
@@ -244,7 +249,7 @@ function transposeJS(buf, context) {
     return buf1;
 }
 
-function reduceOneHorizontalJS(canvas) {
+   reduceOneHorizontalJS = function reduceOneHorizontalJS(canvas) {
     var context = canvas.getContext("2d");
     var buf = context.getImageData(0, 0, virtualWidth, virtualHeight);
     var t1 = new Date();
@@ -256,9 +261,9 @@ function reduceOneHorizontalJS(canvas) {
     var path = findPathJS(energy);
     var image = cutPathHorizontallyJS(buf, path);
     context.putImageData(image, 0, 0);
-}
+};
 
-function reduceOneVerticalJS(canvas) {
+   reduceOneVerticalJS = function reduceOneVerticalJS(canvas) {
     var context = canvas.getContext("2d");
     var buf = context.getImageData(0, 0, virtualWidth, virtualHeight);
     var t1 = new Date();
@@ -270,4 +275,19 @@ function reduceOneVerticalJS(canvas) {
     var path = findPathJS(energy);
     var image = cutPathVerticallyJS(buf, path);
     context.putImageData(image, 0, 0);
-}
+
+   reduceManyHorizontalJS = function reduceManyHorizontalJS(canvas, reps, callback) {
+       for (var i = 0; i < reps; i++) {
+         reduceOneHorizontalJS(theCanvas);
+         callback();
+     }
+   };
+
+   reduceManyVerticalJS = function reduceManyVerticalJS(canvas, reps, callback) {
+     for (var i = 0; i < reps; i++) {
+         reduceOneVerticalJS(theCanvas);
+         callback();
+     }
+   };
+};
+})();
