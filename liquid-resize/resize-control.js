@@ -28,7 +28,7 @@
 "use strict";
 
 // configurable options
-var imageSrc = "tower-small.jpg";
+var imageSrc = "tower-tiny.jpg";
 var previewSteps = 2;
 var recompileThreshold = 100; // experiments show 100 is a good threshold
 
@@ -209,6 +209,7 @@ function resize_loop() {
                     virtualHeight--;
                 }
             }
+/*
             if ((theCanvas.width - virtualWidth > recompileThreshold) ||
                 (theCanvas.height - virtualHeight > recompileThreshold)) {
                 saveImage();
@@ -216,6 +217,7 @@ function resize_loop() {
                 theCanvas.height = virtualHeight;
                 restoreImage();
             }
+*/
         }
     }
     saveImage();

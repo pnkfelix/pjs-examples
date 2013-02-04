@@ -54,33 +54,6 @@ function grayKernelCalc(r,g,b) {
   return g;
 }
 
-function edgeKernelCalc(x, y, source, width, height, sobelX, sobelY, maxX, maxY) {
-    var totalX = 0;
-    var totalY = 0;
-
-    // we need to hint the compiler that maxX <= width 
-    // and maxY <= height, as otherwise the static 
-    // bounds check analysis will fail
-    if (maxX > width) {
-        maxX = width;
-    } 
-    if (maxY > height) {
-        maxY = height;
-    }
-    for (var offY = -1; offY <= 1; offY++) {
-        var newY = y + offY;
-        for (var offX = -1; offX <= 1; offX++) {
-            var newX = x + offX;
-            if (newX >= 0 && newX < maxX && newY >= 0 && newY < maxY) {
-                totalX += source.get(newY, newX) * sobelX[offY + 1][offX + 1];
-                totalY += source.get(newY, newX) * sobelY[offY + 1][offX + 1];
-            }
-        }
-    }
-    var total = Math.floor((Math.abs(totalX) + Math.abs(totalY)) / 8.0);
-    return total;
-}
-
 function energyKernelCombine(idx, prev, maxX) {
     // find minimum above
     var p = prev.get(idx);
@@ -102,27 +75,29 @@ function newArray(nrows, ncols) {
   return a;
 }
 
-function computeEnergy(inPA, maxX) {
+function computeEnergy(inPA) {
   var imageHeight = inPA.shape[0];
   var imageWidth = inPA.shape[1];
   var energy = newArray(imageHeight, imageWidth);
-  var data = inPA.buffer;
   energy[0][0] = 0;
+  var data = inPA.buffer;
   for (var y = 0; y < imageHeight; y++) {
-    for (var x = 0; x < maxX; x++) {
-      var e = data[y*imageWidth + x]; 
+      for (var x = 0; x < imageWidth; x++) {
+          var e = data[y*imageWidth + x]; 
 
-      // find min of energy above
-      if (y >= 1) {
-	var p = energy[y-1][x];
-	if (x > 0 && energy[y-1][x-1] < p)
-	  p = energy[y-1][x-1];
-	if (x < (maxX - 1) && energy[y-1][x+1] < p)
-	  p = energy[y-1][x+1];
-	e += p;
+          // find min of energy above
+          if (y >= 1) {
+              var p = energy[y-1][x];
+              if (x > 0 && energy[y - 1][x - 1] < p) {
+                  p = energy[y - 1][x - 1];
+              }
+              if (x < (imageWidth - 1) && energy[y - 1][x + 1] < p) {
+                  p = energy[y - 1][x + 1];
+              }
+              e += p;
+          }
+          energy[y][x] = e;
       }
-      energy[y][x] = e;
-    }
     //for (var x = maxX; x < imageWidth; x++) {
     //  energy[y][x] = 0;
     //}
@@ -181,7 +156,7 @@ var dropHorizontalKernel = function dropHorizontalKernel(dropIdx, pathPA) {
         //return this.get([idx_0, idx_1+1]);
         return [this.get(idx_0, idx_1 + 1, 0), this.get(idx_0, idx_1 + 1, 1), this.get(idx_0, idx_1 + 1, 2), this.get(idx_0, idx_1 + 1, 3)];
     }
-}
+};
 
 var dropVerticalKernel = function dropVerticalKernel(dropIdx, pathPA) {
     var idx_0 = dropIdx[0];
@@ -197,7 +172,7 @@ var dropVerticalKernel = function dropVerticalKernel(dropIdx, pathPA) {
         //return this.get([idx_0+1, idx_1]);
         return [this.get(idx_0 + 1, idx_1, 0), this.get(idx_0 + 1, idx_1, 1), this.get(idx_0 + 1, idx_1, 2), this.get(idx_0 + 1, idx_1, 3)];
     }
-}
+};
 
 
 /* cut path from the image data */
@@ -285,32 +260,64 @@ low_precision.wrapper.prototype = {
 ParallelArray.fromCanvas = function(canvas) {
   var context = canvas.getContext("2d");
   var imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-  var inPA = new ParallelArray([canvas.height, canvas.width, 4],
-    function(i,j,c) { return imageData.data[i*canvas.height+j+c]; });
+  var inPA = new ParallelArray([canvas.width, canvas.height, 4],
+    function(i,j,c) { return imageData.data[i*canvas.height*4+j*4+c]; });
   return inPA;
 };
 
+function grayScalePA(inPA) {
+  // var grayPA = inPA.combine(2, low_precision(grayKernel));
+  var grayPA = new ParallelArray([inPA.shape[0], inPA.shape[1]],
+                                 function (i,j) {
+                                   var r = inPA.get(i,j,0);
+                                   var g = inPA.get(i,j,1);
+                                   var b = inPA.get(i,j,2);
+                                   var lum = 0.299 * r + 0.587 * g + 0.114 * b;
+                                   return lum;
+                                 });
+  return grayPA;
+}
+
+function edgeKernelCalc(x, y, source) {
+    var totalX = 0;
+    var totalY = 0;
+
+    var height = source.shape[0];
+    var width = source.shape[1];
+
+    // we need to hint the compiler that maxX <= width 
+    // and maxY <= height, as otherwise the static 
+    // bounds check analysis will fail
+
+    for (var offY = -1; offY <= 1; offY++) {
+        var newY = y + offY;
+        for (var offX = -1; offX <= 1; offX++) {
+            var newX = x + offX;
+            if (newX >= 0 && newX < width && newY >= 0 && newY < height) {
+                totalX += source.get(newX, newY) * sobelX[offY + 1][offX + 1];
+                totalY += source.get(newX, newY) * sobelY[offY + 1][offX + 1];
+            }
+        }
+    }
+    var total = Math.floor((Math.abs(totalX) + Math.abs(totalY)) / 8.0);
+    return total;
+}
+
+function detectEdgesPA(grayPA, virtualWidth, virtualHeight) {
+  // var edgePA = grayPA.combine(2, low_precision(edgeKernel), sobelX, sobelY, virtualHeight, virtualWidth);
+  var edgePA = new ParallelArray([grayPA.shape[0], grayPA.shape[1]],
+    function (i,j) { return edgeKernelCalc(i, j, grayPA); });
+  return edgePA;
+}
+
 function reduceOneHorizontal(canvas) {
-    var inPA = ParallelArray.fromCanvas(canvas);
     var t1 = new Date();
-    // var grayPA = inPA.combine(2, low_precision(grayKernel));
-    var grayPA = new ParallelArray([canvas.height, canvas.width],
-      function (i,j) { return grayKernelCalc(inPA.get(i, j, 0),
-                                             inPA.get(i, j, 1),
-                                             inPA.get(i, j, 2)); });
-    // var edgePA = grayPA.combine(2, low_precision(edgeKernel), sobelX, sobelY, virtualWidth, virtualHeight);
-    var edgePA = new ParallelArray([canvas.height, canvas.width],
-      function (i,j) { return edgeKernelCalc(i, j,
-                                             grayPA,
-                                             canvas.width,
-                                             canvas.height,
-                                             sobelX,
-                                             sobelY,
-                                             virtualWidth,
-                                             virtualHeight); });
+    var inPA = ParallelArray.fromCanvas(canvas);
+    var grayPA = grayScalePA(inPA);
+    var edgesPA = detectEdgesPA(grayPA, virtualWidth, virtualHeight);
     var t2 = new Date();
     parallelComponentTime += (t2 - t1);
-    var energy = computeEnergy(edgePA, virtualWidth);
+    var energy = computeEnergy(edgesPA);
     var path = computePath(energy, virtualWidth, virtualHeight);
     var context = canvas.getContext("2d");
     var buf = context.getImageData(0,0,virtualWidth,virtualHeight);
@@ -321,24 +328,11 @@ function reduceOneHorizontal(canvas) {
 function reduceOneVertical(canvas) {
     var inPA = ParallelArray.fromCanvas(canvas);
     var t1 = new Date();
-    var inPAT = transpose(inPA);
-    // var grayPA = inPAT.combine(2, low_precision(grayKernel));
-    var grayPA = new ParallelArray([inPAT.shape[0], inPAT.shape[1]],
-      function (i,j) { return grayKernelCalc(inPAT.get(i,j,0),
-                                             inPAT.get(i,j,1),
-                                             inPAT.get(i,j,2));});
-    // var edgePA = grayPA.combine(2, low_precision(edgeKernel), sobelX, sobelY, virtualHeight, virtualWidth);
-    var edgePA = new ParallelArray([grayPA.shape[0], grayPA.shape[1]],
-      function (i,j) { return edgeKernelCalc(i, j, grayPA,
-                                             canvas.width,
-                                             canvas.height,
-                                             sobelX,
-                                             sobelY,
-                                             virtualHeight,
-                                             virtualWidth); });
+    var grayPA = grayScalePA(transpose(inPA));
+    var edgesPA = detectEdgesPA(grayPA, virtualHeight, virtualWidth);
     var t2 = new Date();
     parallelComponentTime += (t2 - t1);
-    var energy = computeEnergy(edgePA, virtualHeight);
+    var energy = computeEnergy(edgesPA);
     var path = computePath(energy, virtualHeight, virtualWidth);
     var context = canvas.getContext("2d");
     var buf = context.getImageData(0,0,virtualWidth,virtualHeight);
