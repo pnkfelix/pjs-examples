@@ -33,230 +33,13 @@ ACM Trans. Graph. 26, 3, Article 10 (July 2007).
 DOI=10.1145/1276377.1276390 http://doi.acm.org/10.1145/1276377.1276390
 **/
 
-//
-// global data definitions
-//
-
-var sobelX = [[-1.0, 0.0, 1.0],
-              [-2.0, 0.0, 2.0],
-              [-1.0, 0.0, 1.0]];
-
-var sobelY = [[1.0, 2.0, 1.0],
-              [0.0, 0.0, 0.0],
-              [-1.0, -2.0, -1.0]];
-
-//
-// Kernel functions
-//
-
-function grayKernelCalc(r,g,b) {
-  var g = 0.299 * r + 0.587 * g + 0.114 * b;
-  return g;
-}
-
-function energyKernelCombine(idx, prev, maxX) {
-    // find minimum above
-    var p = prev.get(idx);
-    if (idx > 0 && prev.get(idx - 1) < p) {
-        p = prev.get(idx - 1);
-    }
-    if (idx < maxX && prev.get(idx + 1) < p) {
-        p = prev.get(idx + 1);
-    }
-
-    return this.get(idx) + p;
-}
-
 function newArray(nrows, ncols) {
-  var a = new Array(nrows);
-  for (var i = 0; i < nrows; i++) {
-    a[i] = new Array(ncols);
-  }
-  return a;
-}
-
-function computeEnergy(inPA) {
-  var imageHeight = inPA.shape[0];
-  var imageWidth = inPA.shape[1];
-  var energy = newArray(imageHeight, imageWidth);
-  energy[0][0] = 0;
-  var data = inPA.buffer;
-  for (var y = 0; y < imageHeight; y++) {
-      for (var x = 0; x < imageWidth; x++) {
-          var e = data[y*imageWidth + x]; 
-
-          // find min of energy above
-          if (y >= 1) {
-              var p = energy[y-1][x];
-              if (x > 0 && energy[y - 1][x - 1] < p) {
-                  p = energy[y - 1][x - 1];
-              }
-              if (x < (imageWidth - 1) && energy[y - 1][x + 1] < p) {
-                  p = energy[y - 1][x + 1];
-              }
-              e += p;
-          }
-          energy[y][x] = e;
-      }
-    //for (var x = maxX; x < imageWidth; x++) {
-    //  energy[y][x] = 0;
-    //}
-  }
-  return energy;
-}
-
-function findPathJS(energy) {
-    var imageHeight = energy.length;
-    var imageWidth = energy[0].length;
-    var path = new Array(imageHeight);
-    var y = imageHeight - 1;
-    var minPos = 0;
-    var minEnergy = energy[y][minPos];
-
-    for (var x = 1; x < imageWidth; x++) {
-        if (energy[y][x] < minEnergy) {
-            minEnergy = energy[y][x];
-            minPos = x;
-        }
+    var a = new Array(nrows);
+    for (var i = 0; i < nrows; i++) {
+        a[i] = new Array(ncols);
     }
-    path[y] = minPos;
-    for (y = imageHeight - 2; y >=0; y--) {
-        minEnergy = energy[y][minPos];
-        var line = energy[y];
-        var p = minPos;
-        if (p >= 1 && line[p-1] < minEnergy) {
-            minPos = p-1; minEnergy = line[minPos];
-        }
-        if (p < imageWidth - 1 && line[p+1] < minEnergy) {
-            minPos = p+1; minEnergy = line[minPos];
-        }
-        path[y] = minPos;
-    }
-    return path;
+    return a;
 }
-
-var dropHorizontalKernel = function dropHorizontalKernel(dropIdx, pathPA) {
-    var idx_0 = dropIdx[0];
-    var idx_1 = dropIdx[1];
-    var length = this.shape[1];
-    var drop = pathPA.get(idx_0);
-    if (idx_1 < drop) {
-        //return this.get(dropIdx); this line does not work due to an address space clash
-        return [this.get(idx_0, idx_1, 0), this.get(idx_0, idx_1, 1), this.get(idx_0, idx_1, 2), this.get(idx_0, idx_1, 3)];
-    } else if (idx_1 === length - 1) {
-        return [0, 0, 0, 255];
-    } else {
-        //return this.get([idx_0, idx_1+1]);
-        return [this.get(idx_0, idx_1 + 1, 0), this.get(idx_0, idx_1 + 1, 1), this.get(idx_0, idx_1 + 1, 2), this.get(idx_0, idx_1 + 1, 3)];
-    }
-};
-
-var dropVerticalKernel = function dropVerticalKernel(dropIdx, pathPA) {
-    var idx_0 = dropIdx[0];
-    var idx_1 = dropIdx[1];
-    var length = this.shape[0];
-    var drop = pathPA.get(idx_1);
-    if (idx_0 < drop) {
-        //return this.get(dropIdx); this line does not work due to an address space clash
-        return [this.get(idx_0, idx_1, 0), this.get(idx_0, idx_1, 1), this.get(idx_0, idx_1, 2), this.get(idx_0, idx_1, 3)];
-    } else if (idx_0 === length - 1) {
-        return [0, 0, 0, 255];
-    } else {
-        //return this.get([idx_0+1, idx_1]);
-        return [this.get(idx_0 + 1, idx_1, 0), this.get(idx_0 + 1, idx_1, 1), this.get(idx_0 + 1, idx_1, 2), this.get(idx_0 + 1, idx_1, 3)];
-    }
-};
-
-
-/* cut path from the image data */
-
-function cutPathHorizontally(buf, path) {
-  var imageHeight = buf.height;
-  var imageWidth = buf.width;
-  var data = buf.data;
-  var y;
-  for (y = 0; y < imageHeight; y++) { // for all rows
-    var cutX = path[y];
-    var blendX = (cutX == 0 ? cutX + 1 : cutX - 1);
-    var cutIndex = (cutX + y * buf.width) * 4; // getPixelIndex(cutX, y);
-    var blendIndex = (blendX + y * buf.width) * 4; //getPixelIndex(blendX, y);
-    data[cutIndex] = (data[cutIndex] + data[blendIndex])/2;
-    data[cutIndex+1] = (data[cutIndex+1] + data[blendIndex+1])/2;
-    data[cutIndex+2] = (data[cutIndex+2] + data[blendIndex+2])/2;
-    
-    var lastIndex = (imageWidth - 2 + y * buf.width) * 4; // getPixelIndex(imageWidth - 2, y);
-
-    for (var i = cutIndex + 4; i < lastIndex; i += 4) {
-      data[i] = data[i+4];
-      data[i+1] = data[i+5];
-      data[i+2] = data[i+6];
-    }
-    
-    lastIndex += 4; // last pixel in a row
-    data[lastIndex] = data[lastIndex+1] = data[lastIndex + 2] = 0;
-  }
-
-  return buf;
-}
-
-function cutPathVertically(buf, path) {
-  var imageHeight = buf.height;
-  var imageWidth = buf.width;
-  var rowStride = imageWidth * 4;
-  var data = buf.data;
-  var x;
-  for (x = 0; x < imageWidth; x++) { // for all cols
-    var cutY = path[x];
-    var blendY = (cutY == 0 ? cutY + 1 : cutY - 1);
-    var cutIndex = (x + cutY * buf.width) * 4; //getPixelIndex(x, cutY);
-    var blendIndex = (x + blendY * buf.width) * 4; //getPixelIndex(x, blendY);
-    data[cutIndex] = (data[cutIndex] + data[blendIndex])/2;
-    data[cutIndex+1] = (data[cutIndex+1] + data[blendIndex+1])/2;
-    data[cutIndex+2] = (data[cutIndex+2] + data[blendIndex+2])/2;
-    
-    var lastIndex = (x + (imageHeight - 2) * buf.width) * 4; //getPixelIndex(x, imageHeight - 2);
-
-    for (var i = cutIndex + rowStride; i < lastIndex; i += rowStride) {
-      data[i] = data[i+rowStride];
-      data[i+1] = data[i+rowStride+1];
-      data[i+2] = data[i+rowStride+2];
-    }
-    
-    lastIndex += rowStride; // last pixel in a column
-    data[lastIndex] = data[lastIndex+1] = data[lastIndex + 2] = 0;
-  }
-
-  return buf;
-}
-
-function transpose(aPA) {
-  return new ParallelArray([aPA.shape[1], aPA.shape[0], aPA.shape[2]],
-                           function(i,j,k) { return aPA.get(j, i, k); });
-}
-
-var low_precision = function (f) {
-    if (typeof(f) !== "function") {
-        throw new TypeError("low_precision can only be applied to functions");
-    }
-    return new low_precision.wrapper(f);
-}
-
-low_precision.wrapper = function (f) {
-    this.wrappedFun = f;
-    return this;
-}
-
-low_precision.wrapper.prototype = {
-    "unwrap" : function () { return this.wrappedFun; }
-};
-
-ParallelArray.fromCanvas = function(canvas) {
-  var context = canvas.getContext("2d");
-  var imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-  var inPA = new ParallelArray([canvas.width, canvas.height, 4],
-    function(i,j,c) { return imageData.data[i*canvas.height*4+j*4+c]; });
-  return inPA;
-};
 
 function grayScalePA(inPA) {
   // var grayPA = inPA.combine(2, low_precision(grayKernel));
@@ -271,64 +54,202 @@ function grayScalePA(inPA) {
   return grayPA;
 }
 
-function edgeKernelCalc(x, y, source) {
-    var totalX = 0;
-    var totalY = 0;
+// Edge detection; returns data with detected edges
 
-    var height = source.shape[0];
-    var width = source.shape[1];
+function detectEdgesPA(grayPA) {
 
-    // we need to hint the compiler that maxX <= width 
-    // and maxY <= height, as otherwise the static 
-    // bounds check analysis will fail
+    var sobelX =  [[-1.0,  0.0, 1.0],
+                    [-2.0, 0.0, 2.0],
+                    [-1.0, 0.0, 1.0]];
+    var sobelY = [[1.0,  2.0, 1.0],
+                    [0.0, 0.0, 0.0],
+                    [-1.0, -2.0, -1.0]];
 
-    for (var offY = -1; offY <= 1; offY++) {
-        var newY = y + offY;
-        for (var offX = -1; offX <= 1; offX++) {
-            var newX = x + offX;
-            if (newX >= 0 && newX < width && newY >= 0 && newY < height) {
-                totalX += source.get(newX, newY) * sobelX[offY + 1][offX + 1];
-                totalY += source.get(newX, newY) * sobelY[offY + 1][offX + 1];
+    var height = grayPA.shape[0];
+    var width = grayPA.shape[1];
+
+        function edgeKernelCalc(y, x) {
+            var totalX = 0;
+            var totalY = 0;
+
+            for (var offY = -1; offY <= 1; offY++) {
+                var newY = y + offY;
+                for (var offX = -1; offX <= 1; offX++) {
+                    var newX = x + offX;
+                    if ((newX >= 0) && (newX < width) && (newY >= 0) && (newY < height)) {
+                        var e = grayPA.get(newY, newX);
+                        totalX += e * sobelX[offY + 1][offX + 1];
+                        totalY += e * sobelY[offY + 1][offX + 1];
+                    }
+                }
             }
+
+            var total = Math.floor((Math.abs(totalX) + Math.abs(totalY)) / 8.0);
+            return total;
+        }
+
+    var edgePA = new ParallelArray(grayPA.shape, edgeKernelCalc);
+    return edgePA;
+
+}
+
+function computeEnergyPA(inPA) {
+  var height = inPA.shape[0];
+  var width = inPA.shape[1];
+  var energy = newArray(height, width);
+  energy[0][0] = 0;
+  for (var y = 0; y < height; y++) {
+      for (var x = 0; x < width; x++) {
+        // var e = data[y*width + x]; 
+        var e = inPA.get(y, x);
+
+          // find min of energy above
+          if (y >= 1) {
+              var p = energy[y-1][x];
+              if (x > 0 && energy[y - 1][x - 1] < p) {
+                  p = energy[y - 1][x - 1];
+              }
+              if (x < (width - 1) && energy[y - 1][x + 1] < p) {
+                  p = energy[y - 1][x + 1];
+              }
+              e += p;
+          }
+          energy[y][x] = e;
+      }
+  }
+  return energy;
+}
+
+function findPathPA(energy) {
+    var height = energy.length;
+    var width = energy[0].length;
+    var path = new Array(height);
+    var y = height - 1;
+    var minPos = 0;
+    var minEnergy = energy[y][minPos];
+
+    for (var x = 1; x < width; x++) {
+        if (energy[y][x] < minEnergy) {
+            minEnergy = energy[y][x];
+            minPos = x;
         }
     }
-    var total = Math.floor((Math.abs(totalX) + Math.abs(totalY)) / 8.0);
-    return total;
+    path[y] = minPos;
+    for (y = height - 2; y >=0; y--) {
+        minEnergy = energy[y][minPos];
+        var line = energy[y];
+        var p = minPos;
+        if (p >= 1 && line[p-1] < minEnergy) {
+            minPos = p-1; minEnergy = line[minPos];
+        }
+        if (p < width - 1 && line[p+1] < minEnergy) {
+            minPos = p+1; minEnergy = line[minPos];
+        }
+        path[y] = minPos;
+    }
+    return path;
 }
 
-function detectEdgesPA(grayPA, virtualWidth, virtualHeight) {
-  // var edgePA = grayPA.combine(2, low_precision(edgeKernel), sobelX, sobelY, virtualHeight, virtualWidth);
-  var edgePA = new ParallelArray([grayPA.shape[0], grayPA.shape[1]],
-    function (i,j) { return edgeKernelCalc(i, j, grayPA); });
-  return edgePA;
+/* cut path from the image data */
+
+function cutPathHorizontallyPA(buf, path) {
+    var height = buf.height;
+    var width = buf.width;
+    var data = buf.data;
+    var y;
+    for (y = 0; y < height; y++) { // for all rows
+        var cutX = path[y];
+        var blendX = (cutX == 0 ? cutX + 1 : cutX - 1);
+        var cutIndex = (cutX + y * buf.width) * 4; // getPixelIndex(cutX, y);
+        var blendIndex = (blendX + y * buf.width) * 4; //getPixelIndex(blendX, y);
+        data[cutIndex] = (data[cutIndex] + data[blendIndex])/2;
+        data[cutIndex+1] = (data[cutIndex+1] + data[blendIndex+1])/2;
+        data[cutIndex+2] = (data[cutIndex+2] + data[blendIndex+2])/2;
+    
+        var lastIndex = (width - 2 + y * buf.width) * 4; // getPixelIndex(width - 2, y);
+
+        for (var i = cutIndex + 4; i < lastIndex; i += 4) {
+            data[i] = data[i+4];
+            data[i+1] = data[i+5];
+            data[i+2] = data[i+6];
+        }
+    
+        lastIndex += 4; // last pixel in a row
+        data[lastIndex] = data[lastIndex + 1] = data[lastIndex + 2] = 0;  
+    }
+
+    return buf;
 }
 
-function reduceOneHorizontal(canvas) {
+function cutPathVerticallyPA(buf, path) {
+    var height = buf.height;
+    var width = buf.width;
+    var rowStride = width * 4;
+    var data = buf.data;
+    var x;
+    for (x = 0; x < width; x++) { // for all cols
+        var cutY = path[x];
+        var blendY = (cutY == 0 ? cutY + 1 : cutY - 1);
+        var cutIndex = (x + cutY * buf.width) * 4; //getPixelIndex(x, cutY);
+        var blendIndex = (x + blendY * buf.width) * 4; //getPixelIndex(x, blendY);
+        data[cutIndex] = (data[cutIndex] + data[blendIndex])/2;
+        data[cutIndex+1] = (data[cutIndex+1] + data[blendIndex+1])/2;
+        data[cutIndex+2] = (data[cutIndex+2] + data[blendIndex+2])/2;
+    
+        var lastIndex = (x + (height - 2) * buf.width) * 4; //getPixelIndex(x, height - 2);
+
+        for (var i = cutIndex + rowStride; i < lastIndex; i += rowStride) {
+            data[i] = data[i+rowStride];
+            data[i+1] = data[i+rowStride+1];
+            data[i+2] = data[i+rowStride+2];
+        }
+    
+        lastIndex += rowStride; // last pixel in a column
+        data[lastIndex] = data[lastIndex+1] = data[lastIndex + 2] = 0;
+    }
+
+    return buf;
+}
+
+function transpose(aPA) {
+  return new ParallelArray([aPA.shape[1], aPA.shape[0], aPA.shape[2]],
+                           function(i,j,k) { return aPA.get(j, i, k); });
+}
+
+ParallelArray.fromCanvas = function(canvas) {
+  var context = canvas.getContext("2d");
+  var imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+  var inPA = new ParallelArray([canvas.height, canvas.width, 4],
+    function(i,j,c) { return imageData.data[i*canvas.width*4+j*4+c]; });
+  return inPA;
+};
+
+function reduceOneHorizontalPA(canvas) {
+    var context = canvas.getContext("2d");
+    var buf = context.getImageData(0, 0, virtualWidth, virtualHeight);
     var t1 = new Date();
     var inPA = ParallelArray.fromCanvas(canvas);
     var grayPA = grayScalePA(inPA);
-    var edgesPA = detectEdgesPA(grayPA, virtualWidth, virtualHeight);
+    var edgesPA = detectEdgesPA(grayPA);
     var t2 = new Date();
     parallelComponentTime += (t2 - t1);
-    var energy = computeEnergy(edgesPA);
-    var path = findPathJS(energy);
-    var context = canvas.getContext("2d");
-    var buf = context.getImageData(0,0,virtualWidth,virtualHeight);
-    var res = cutPathHorizontally(buf, path);
+    var energy = computeEnergyPA(edgesPA);
+    var path = findPathPA(energy);
+    var res = cutPathHorizontallyPA(buf, path);
     context.putImageData(res, 0, 0);
 }
 
-function reduceOneVertical(canvas) {
-    var inPA = ParallelArray.fromCanvas(canvas);
+function reduceOneVerticalPA(canvas) {
+    var context = canvas.getContext("2d");
+    var buf = context.getImageData(0, 0, virtualWidth, virtualHeight);
     var t1 = new Date();
+    var inPA = ParallelArray.fromCanvas(canvas);
     var grayPA = grayScalePA(transpose(inPA));
-    var edgesPA = detectEdgesPA(grayPA, virtualHeight, virtualWidth);
+    var edgesPA = detectEdgesPA(grayPA);
     var t2 = new Date();
     parallelComponentTime += (t2 - t1);
-    var energy = computeEnergy(edgesPA);
-    var path = findPathJS(energy);
-    var context = canvas.getContext("2d");
-    var buf = context.getImageData(0,0,virtualWidth,virtualHeight);
-    var res = cutPathVertically(buf, path);
+    var energy = computeEnergyPA(edgesPA);
+    var path = findPathPA(energy);
+    var res = cutPathVerticallyPA(buf, path);
     context.putImageData(res, 0, 0);
 }

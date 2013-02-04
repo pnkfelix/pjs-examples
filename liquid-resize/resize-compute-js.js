@@ -43,8 +43,6 @@ function newArray(nrows, ncols) {
 
 // Find first index of a pixel in the data array
 
-function getPixelIndex(x, y) {return (y*virtualWidth + x)*4;}
-
 function grayScaleJS(buf, context) {
     var buf1 = context.createImageData(buf.width, buf.height);
     var data = buf.data;
@@ -64,7 +62,6 @@ function grayScaleJS(buf, context) {
     return buf1;
 }
 
-
 // Edge detection; returns data with detected edges
 
 function detectEdgesJS(buf, context) {
@@ -78,11 +75,11 @@ function detectEdgesJS(buf, context) {
                     [0.0, 0.0, 0.0],
                     [-1.0, -2.0, -1.0]];
 
-    var imageHeight = buf.height;
-    var imageWidth = buf.width;
+    var height = buf.height;
+    var width = buf.width;
 
-    for (var y = 0; y < imageHeight; y++) {
-        for (var x = 0; x < imageWidth; x++) {
+    for (var y = 0; y < height; y++) {
+        for (var x = 0; x < width; x++) {
             // process pixel
             var totalX = 0;
             var totalY = 0;
@@ -90,11 +87,11 @@ function detectEdgesJS(buf, context) {
                 var newY = y + offY;
                 for (var offX = -1; offX <= 1; offX++) {
                     var newX = x + offX;
-                    if ((newX >= 0) && (newX < imageWidth) 
-                        && (newY >= 0) && (newY < imageHeight)) {
+                    if ((newX >= 0) && (newX < width) && (newY >= 0) && (newY < height)) {
                         var pointIndex = (x + offX + (y + offY) * buf.width) * 4;
-                        totalX += data[pointIndex] * sobelX[offY+1][offX+1];
-                        totalY += data[pointIndex] * sobelY[offY+1][offX+1];
+                        var e = data[pointIndex];
+                        totalX += e * sobelX[offY + 1][offX + 1];
+                        totalY += e * sobelY[offY + 1][offX + 1];
                     }
                 }
             }
@@ -109,18 +106,16 @@ function detectEdgesJS(buf, context) {
     return buf1;
 }
 
-var maxEnergy = 0;
-
 // Compute energy and return an array
   
 function computeEnergyJS(buf) {
-    var imageHeight = buf.height;
-    var imageWidth = buf.width;
-    var energy = newArray(imageHeight, imageWidth);
+    var height = buf.height;
+    var width = buf.width;
+    var energy = newArray(height, width);
     energy[0][0] = 0;
     var data = buf.data;
-    for (var y = 0; y < imageHeight; y++) {
-        for (var x = 0; x < imageWidth; x++) {
+    for (var y = 0; y < height; y++) {
+        for (var x = 0; x < width; x++) {
             var e = data[(x + y * buf.width) * 4];
 
             // find min of energy above
@@ -129,42 +124,40 @@ function computeEnergyJS(buf) {
                 if (x > 0 && energy[y - 1][x - 1] < p) {
                     p = energy[y - 1][x - 1];
                 }
-                if (x < (imageWidth - 1) && energy[y - 1][x + 1] < p) {
+                if (x < (width - 1) && energy[y - 1][x + 1] < p) {
                     p = energy[y - 1][x + 1];
                 }
                 e += p;
             }
             energy[y][x] = e;
-            //if (e > maxEnergy)
-            //maxEnergy = e;
         }
     }
     return energy;
 }
 
 function findPathJS(energy) {
-    var imageHeight = energy.length;
-    var imageWidth = energy[0].length;
-    var path = new Array(imageHeight);
-    var y = imageHeight - 1;
+    var height = energy.length;
+    var width = energy[0].length;
+    var path = new Array(height);
+    var y = height - 1;
     var minPos = 0;
     var minEnergy = energy[y][minPos];
 
-    for (var x = 1; x < imageWidth; x++) {
+    for (var x = 1; x < width; x++) {
         if (energy[y][x] < minEnergy) {
             minEnergy = energy[y][x];
             minPos = x;
         }
     }
     path[y] = minPos;
-    for (y = imageHeight - 2; y >=0; y--) {
+    for (y = height - 2; y >=0; y--) {
         minEnergy = energy[y][minPos];
         var line = energy[y];
         var p = minPos;
         if (p >= 1 && line[p-1] < minEnergy) {
             minPos = p-1; minEnergy = line[minPos];
         }
-        if (p < imageWidth - 1 && line[p+1] < minEnergy) {
+        if (p < width - 1 && line[p+1] < minEnergy) {
             minPos = p+1; minEnergy = line[minPos];
         }
         path[y] = minPos;
@@ -172,15 +165,14 @@ function findPathJS(energy) {
     return path;
 }
 
-
 /* cut path from the image data */
 
 function cutPathHorizontallyJS(buf, path) {
-    var imageHeight = buf.height;
-    var imageWidth = buf.width;
+    var height = buf.height;
+    var width = buf.width;
     var data = buf.data;
     var y;
-    for (y = 0; y < imageHeight; y++) { // for all rows
+    for (y = 0; y < height; y++) { // for all rows
         var cutX = path[y];
         var blendX = (cutX == 0 ? cutX + 1 : cutX - 1);
         var cutIndex = (cutX + y * buf.width) * 4; // getPixelIndex(cutX, y);
@@ -189,7 +181,7 @@ function cutPathHorizontallyJS(buf, path) {
         data[cutIndex+1] = (data[cutIndex+1] + data[blendIndex+1])/2;
         data[cutIndex+2] = (data[cutIndex+2] + data[blendIndex+2])/2;
     
-        var lastIndex = (imageWidth - 2 + y * buf.width) * 4; // getPixelIndex(imageWidth - 2, y);
+        var lastIndex = (width - 2 + y * buf.width) * 4; // getPixelIndex(width - 2, y);
 
         for (var i = cutIndex + 4; i < lastIndex; i += 4) {
             data[i] = data[i+4];
@@ -205,12 +197,12 @@ function cutPathHorizontallyJS(buf, path) {
 }
 
 function cutPathVerticallyJS(buf, path) {
-    var imageHeight = buf.height;
-    var imageWidth = buf.width;
-    var rowStride = imageWidth * 4;
+    var height = buf.height;
+    var width = buf.width;
+    var rowStride = width * 4;
     var data = buf.data;
     var x;
-    for (x = 0; x < imageWidth; x++) { // for all cols
+    for (x = 0; x < width; x++) { // for all cols
         var cutY = path[x];
         var blendY = (cutY == 0 ? cutY + 1 : cutY - 1);
         var cutIndex = (x + cutY * buf.width) * 4; //getPixelIndex(x, cutY);
@@ -219,7 +211,7 @@ function cutPathVerticallyJS(buf, path) {
         data[cutIndex+1] = (data[cutIndex+1] + data[blendIndex+1])/2;
         data[cutIndex+2] = (data[cutIndex+2] + data[blendIndex+2])/2;
     
-        var lastIndex = (x + (imageHeight - 2) * buf.width) * 4; //getPixelIndex(x, imageHeight - 2);
+        var lastIndex = (x + (height - 2) * buf.width) * 4; //getPixelIndex(x, height - 2);
 
         for (var i = cutIndex + rowStride; i < lastIndex; i += rowStride) {
             data[i] = data[i+rowStride];

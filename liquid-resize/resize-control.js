@@ -199,25 +199,16 @@ function resize_loop() {
         while ((virtualWidth > bottomX) || (virtualHeight > bottomY)) {
             if (virtualWidth > bottomX) {
                 for (var i = 0; i < xReps; i++) {
-                    reduceOneHorizontal(theCanvas);
+                    reduceOneHorizontalPA(theCanvas);
                     virtualWidth--;
                 }
             }
             if (virtualHeight > bottomY) {
                 for (var i = 0; i < yReps; i++) {
-                    reduceOneVertical(theCanvas);
+                    reduceOneVerticalPA(theCanvas);
                     virtualHeight--;
                 }
             }
-/*
-            if ((theCanvas.width - virtualWidth > recompileThreshold) ||
-                (theCanvas.height - virtualHeight > recompileThreshold)) {
-                saveImage();
-                theCanvas.width = virtualWidth;
-                theCanvas.height = virtualHeight;
-                restoreImage();
-            }
-*/
         }
     }
     saveImage();
