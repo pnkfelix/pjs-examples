@@ -38,6 +38,26 @@ var reduceManyHorizontalPA, reduceManyVerticalPA;
 
 (function () {
 
+function fillArrFromPA(arr, pa) {
+  var i;
+  for (i = 0; i < pa.length; i++) {
+    arr[i] = pa.get(i);
+  }
+  return arr;
+}
+
+function fillBufFromPA(buf, pa) { fillArrFromPA(buf.data, pa); return buf; }
+
+function paFromBuf(buf) {
+  function filler(i) { return buf.data[i]; }
+  return new ParallelArray(buf.data.length, filler);
+}
+
+function pa4FromBuf(buf) {
+  function filler(i, j) { return buf.data[i*4+j]; }
+  return new ParallelArray([buf.data.length/4,4], filler);
+}
+
 function newArray(nrows, ncols) {
     var a = new Array(nrows);
     for (var i = 0; i < nrows; i++) {
@@ -65,6 +85,66 @@ function grayScaleJS(buf, context) {
         data1[i+3] = 255;
     }
     return buf1;
+}
+
+function grayScalePA_v3(buf, context) {
+    var buf1 = context.createImageData(buf.width, buf.height);
+    var data = buf.data;
+    var data1 = buf1.data;
+
+    var i;
+    for (i = 0; i < data.length; i+=4) {
+        var r = data[i];
+        var g = data[i+1];
+        var b = data[i+2];
+        var lum = (0.299*r + 0.587*g + 0.114*g);
+        data1[i] = lum;
+        data1[i+1] = lum;
+        data1[i+2] = lum;
+        data1[i+3] = 255;
+    }
+    var buf2 = context.createImageData(buf1.width, buf1.height);
+    return fillBufFromPA(buf2, paFromBuf(buf1));
+}
+
+function grayScalePACore(pa) {
+    var pa1 = new ParallelArray(pa.length,
+      function(i) {
+        if ((i % 4) == 3)
+          return 255;
+        var j = i - (i % 4);
+        var r = pa.get(j);
+        var g = pa.get(j+1);
+        var b = pa.get(j+2);
+        var lum = (0.299*r + 0.587*g + 0.114*g);
+        return lum;
+      });
+  return pa1;
+}
+
+function grayScalePA(buf, context) {
+    var buf1 = context.createImageData(buf.width, buf.height);
+    var pa = paFromBuf(buf);
+    var pa1 = grayScalePACore(pa);
+    return fillBufFromPA(buf1, pa1);
+}
+
+function grayScalePA_v1(buf, context) {
+    var buf1 = context.createImageData(buf.width, buf.height);
+
+    var pa = pa4FromBuf(buf);
+    var pa1 = pa.map(function (d) {
+                       var r = d.get(0);
+                       var g = d.get(1);
+                       var b = d.get(2);
+                       var lum = (0.299*r + 0.587*g + 0.114*g);
+                       return lum;
+                     });
+    var pa2 = new ParallelArray(buf.data.length,
+      function (i) {
+        return ((i % 4) < 3) ? pa1.get((i / 4) | 0) : 255;
+      });
+    return fillBufFromPA(buf1, pa2);
 }
 
 // Edge detection; returns data with detected edges
@@ -109,6 +189,60 @@ function detectEdgesJS(buf, context) {
         }
     }
     return buf1;
+}
+
+function detectEdgesPACore(pa, height, width) {
+    var sobelX =  [[-1.0,  0.0, 1.0],
+                    [-2.0, 0.0, 2.0],
+                    [-1.0, 0.0, 1.0]];
+    var sobelY = [[1.0,  2.0, 1.0],
+                    [0.0, 0.0, 0.0],
+                    [-1.0, -2.0, -1.0]];
+
+    /*
+    for (var y = 0; y < height; y++) {
+        for (var x = 0; x < width; x++) {
+          var index = (x + y * buf.width) * 4; 
+          ... } }
+     */
+
+    var pa1 = new ParallelArray(height * width * 4,
+      function (index) {
+        if ((index % 4) == 3) {
+          return 255;
+        }
+        var j = i - (i % 4);
+        var y = (j / width) | 0;
+        var x = (j % width);
+
+        // process pixel
+        var totalX = 0;
+        var totalY = 0;
+        for (var offY = -1; offY <= 1; offY++) {
+          var newY = y + offY;
+          for (var offX = -1; offX <= 1; offX++) {
+            var newX = x + offX;
+            if ((newX >= 0) && (newX < width) && (newY >= 0) && (newY < height)) {
+              var pointIndex = (x + offX + (y + offY) * width) * 4;
+              var e = pa.get(pointIndex);
+              totalX += e * sobelX[offY + 1][offX + 1];
+              totalY += e * sobelY[offY + 1][offX + 1];
+            }
+          }
+        }
+        var total = Math.floor((Math.abs(totalX) + Math.abs(totalY))/8.0);
+        return total;
+      });
+  return pa1;
+}
+
+function detectEdgesPA(buf, context) {
+  var pa = paFromBuf(buf);
+  var height = buf.height;
+  var width = buf.width;
+  var pa1 = detectEdgesPACore(pa, height, width);
+  var buf1 = context.createImageData(buf.width, buf.height);
+  return fillBufFromPA(buf1, pa1);
 }
 
 // Compute energy and return an array
@@ -249,32 +383,29 @@ function transposeJS(buf, context) {
     return buf1;
 }
 
+   function reduceOneCore(canvas, transform, cutPath) {
+     var context = canvas.getContext("2d");
+     var buf = context.getImageData(0, 0, virtualWidth, virtualHeight);
+     var t1 = new Date();
+     var gray = grayScalePA(transform(buf, context), context);
+     var edges = detectEdgesJS(gray, context);
+     var t2 = new Date();
+     parallelComponentTime += (t2 - t1);
+     var energy = computeEnergyJS(edges);
+     var path = findPathJS(energy);
+     var image = cutPath(buf, path);
+     context.putImageData(image, 0, 0);
+   }
+
    reduceOneHorizontalPA = function reduceOneHorizontalPA(canvas) {
-    var context = canvas.getContext("2d");
-    var buf = context.getImageData(0, 0, virtualWidth, virtualHeight);
-    var t1 = new Date();
-    var gray = grayScaleJS(buf, context);
-    var edges = detectEdgesJS(gray, context);
-    var t2 = new Date();
-    parallelComponentTime += (t2 - t1);
-    var energy = computeEnergyJS(edges);
-    var path = findPathJS(energy);
-    var image = cutPathHorizontallyJS(buf, path);
-    context.putImageData(image, 0, 0);
-};
+     function id(buf, context) { return buf; }
+     reduceOneCore(canvas, id, cutPathHorizontallyJS);
+   };
 
    reduceOneVerticalPA = function reduceOneVerticalPA(canvas) {
-    var context = canvas.getContext("2d");
-    var buf = context.getImageData(0, 0, virtualWidth, virtualHeight);
-    var t1 = new Date();
-    var gray = grayScaleJS(transposeJS(buf, context), context);
-    var edges = detectEdgesJS(gray, context);
-    var t2 = new Date();
-    parallelComponentTime += (t2 - t1);
-    var energy = computeEnergyJS(edges);
-    var path = findPathJS(energy);
-    var image = cutPathVerticallyJS(buf, path);
-    context.putImageData(image, 0, 0);
+     function flip(buf, context) { return transposeJS(buf, context); }
+     reduceOneCore(canvas, flip, cutPathVerticallyJS);
+   };
 
    reduceManyHorizontalPA = function reduceManyHorizontalPA(canvas, reps, callback) {
        for (var i = 0; i < reps; i++) {
@@ -289,5 +420,4 @@ function transposeJS(buf, context) {
          callback();
      }
    };
-};
 })();
