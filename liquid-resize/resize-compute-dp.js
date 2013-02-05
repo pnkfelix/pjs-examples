@@ -440,11 +440,9 @@ function transposeJS(buf, context) {
      var buf = context.getImageData(0, 0, virtualWidth, virtualHeight);
      var t1 = new Date();
      var buf2 = transform(buf, context);
-     var buf3 = context.createImageData(buf2.width, buf2.height);
      var pa = paFromBuf(buf2);
      var pa1 = grayScalePACore(pa);
      var pa2 = detectEdgesPACore(pa1, buf2.height, buf2.width);
-     var buf1 = context.createImageData(buf2.width, buf2.height);
      var t2 = new Date();
      parallelComponentTime += (t2 - t1);
      var ePAs = computeEnergyPACore(pa2, buf2.height, buf2.width);
