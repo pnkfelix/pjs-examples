@@ -464,14 +464,14 @@ function transposeJS(buf, context) {
 
    reduceManyHorizontalPA = function reduceManyHorizontalPA(canvas, reps, callback) {
        for (var i = 0; i < reps; i++) {
-         reduceOneHorizontalPA(theCanvas);
+         reduceOneHorizontalPA(canvas);
          callback();
      }
    };
 
    reduceManyVerticalPA = function reduceManyVerticalPA(canvas, reps, callback) {
      for (var i = 0; i < reps; i++) {
-         reduceOneVerticalPA(theCanvas);
+         reduceOneVerticalPA(canvas);
          callback();
      }
    };
