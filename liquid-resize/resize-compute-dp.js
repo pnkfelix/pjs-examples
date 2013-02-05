@@ -211,7 +211,7 @@ function detectEdgesPACore(pa, height, width) {
         if ((index % 4) == 3) {
           return 255;
         }
-        var j = i - (i % 4);
+        var j = (index / 4) | 0;
         var y = (j / width) | 0;
         var x = (j % width);
 
@@ -388,7 +388,7 @@ function transposeJS(buf, context) {
      var buf = context.getImageData(0, 0, virtualWidth, virtualHeight);
      var t1 = new Date();
      var gray = grayScalePA(transform(buf, context), context);
-     var edges = detectEdgesJS(gray, context);
+     var edges = detectEdgesPA(gray, context);
      var t2 = new Date();
      parallelComponentTime += (t2 - t1);
      var energy = computeEnergyJS(edges);
