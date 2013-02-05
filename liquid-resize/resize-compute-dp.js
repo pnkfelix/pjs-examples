@@ -66,6 +66,27 @@ function newArray(nrows, ncols) {
     return a;
 }
 
+function newArrayFromPA(pa) {
+  var nrows = pa.shape[0];
+  var ncols = pa.shape[1];
+  var a = newArray(nrows, ncols);
+  for (var i = 0; i < nrows; i++) {
+    for (var j = 0; j < ncols; j++) {
+      a[i][j] = pa.get(i,j);
+    }
+  }
+  return a;
+}
+
+function newArrayFromArrayofPA(apa) {
+  var nrows = apa.length;
+  var ncols = apa[0].length;
+  var a = newArray(nrows, ncols);
+  for (var i = 0; i < nrows; i++)
+    fillArrFromPA(a[i], apa[i]);
+  return a;
+}
+
 // Find first index of a pixel in the data array
 
 function grayScaleJS(buf, context) {
@@ -274,6 +295,37 @@ function computeEnergyJS(buf) {
     return energy;
 }
 
+// ParallelArray -> [ParallelArray]
+function computeEnergyPACore(pa, height, width) {
+    var ePAs = new Array(height);
+    ePAs[0] = new ParallelArray(width, function (x) { return pa.get(x * 4); });
+    for (var y = 1; y < height; y++) {
+      ePAs[y] = new ParallelArray(width,
+        function (x) {
+          var above = ePAs[y-1];
+          var p = above.get(x);
+          var lft = p;
+          var rgt = p;
+          if (x > 0)
+            lft = above.get(x-1);
+          if (x < (width - 1))
+            rgt = above.get(x+1);
+          var e = pa.get((x + y * width) * 4) + Math.min(lft, p, rgt);
+          return e;
+        });
+    }
+    return ePAs;
+}
+
+function computeEnergyPA(buf) {
+    var pa = paFromBuf(buf);
+    var height = buf.height;
+    var width = buf.width;
+    var ePAs = computeEnergyPACore(pa, height, width);
+    var energy = newArrayFromArrayofPA(ePAs);
+    return energy;
+}
+
 function findPathJS(energy) {
     var height = energy.length;
     var width = energy[0].length;
@@ -393,10 +445,10 @@ function transposeJS(buf, context) {
      var pa1 = grayScalePACore(pa);
      var pa2 = detectEdgesPACore(pa1, buf2.height, buf2.width);
      var buf1 = context.createImageData(buf2.width, buf2.height);
-     var edges = fillBufFromPA(buf1, pa2);
      var t2 = new Date();
      parallelComponentTime += (t2 - t1);
-     var energy = computeEnergyJS(edges);
+     var ePAs = computeEnergyPACore(pa2, buf2.height, buf2.width);
+     var energy = newArrayFromArrayofPA(ePAs);
      var path = findPathJS(energy);
      var image = cutPath(buf, path);
      context.putImageData(image, 0, 0);
