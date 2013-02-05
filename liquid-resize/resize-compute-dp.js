@@ -435,11 +435,10 @@ function transposeJS(buf, context) {
     return buf1;
 }
 
-   function reduceOneCore(canvas, transform, cutPath) {
-     var context = canvas.getContext("2d");
+   function reduceOneCore(context, transform, cutPath) {
      var buf = context.getImageData(0, 0, virtualWidth, virtualHeight);
      var t1 = new Date();
-     var buf2 = transform(buf, context);
+     var buf2 = transform(buf);
      var pa = paFromBuf(buf2);
      var pa1 = grayScalePACore(pa);
      var pa2 = detectEdgesPACore(pa1, buf2.height, buf2.width);
@@ -453,13 +452,15 @@ function transposeJS(buf, context) {
    }
 
    reduceOneHorizontalPA = function reduceOneHorizontalPA(canvas) {
-     function id(buf, context) { return buf; }
-     reduceOneCore(canvas, id, cutPathHorizontallyJS);
+     var context = canvas.getContext("2d");
+     function id(buf) { return buf; }
+     reduceOneCore(context, id, cutPathHorizontallyJS);
    };
 
    reduceOneVerticalPA = function reduceOneVerticalPA(canvas) {
-     function flip(buf, context) { return transposeJS(buf, context); }
-     reduceOneCore(canvas, flip, cutPathVerticallyJS);
+     var context = canvas.getContext("2d");
+     function flip(buf) { return transposeJS(buf, context); }
+     reduceOneCore(context, flip, cutPathVerticallyJS);
    };
 
    reduceManyHorizontalPA = function reduceManyHorizontalPA(canvas, reps, callback) {
