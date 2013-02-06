@@ -507,7 +507,7 @@ function transposePA(pa) {
      context.putImageData(image, 0, 0);
 
      stages[1] += t_transform01 - t_start;
-     stages[2] += t_grayscale02 - t_transform01;
+     stages[2] += t_grayscale02 - t_transform01;       // significant time here
      stages[3] += t_detectedges03 - t_grayscale02;
      stages[4] += t_computeenergy04 - t_detectedges03; // bulk of time is here
      stages[5] += t_findpath05 - t_computeenergy04;
