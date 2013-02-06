@@ -320,17 +320,21 @@ function computeEnergyPACore(pa) {
     var ePAs = new Array(height);
     ePAs[0] = new ParallelArray(width, function (x) { return pa.get(x * 4); });
     for (var y = 1; y < height; y++) {
+      var above = ePAs[y-1];
       ePAs[y] = new ParallelArray(width,
         function (x) {
-          var above = ePAs[y-1];
           var p = above.get(x);
           var lft = p;
           var rgt = p;
-          if (x > 0)
+          if (x > 0) {
             lft = above.get(x-1);
-          if (x < (width - 1))
+            if (lft < p) p = lft;
+          }
+          if (x < (width - 1)) {
             rgt = above.get(x+1);
-          var e = pa.get((x + y * width) * 4) + Math.min(lft, p, rgt);
+            if (rgt < p) p = rgt;
+          }
+          var e = pa.get((x + y * width) * 4) + p;
           return e;
         });
     }
