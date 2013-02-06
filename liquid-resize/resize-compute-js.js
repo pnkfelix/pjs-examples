@@ -275,6 +275,7 @@ function transposeJS(buf, context) {
     var path = findPathJS(energy);
     var image = cutPathVerticallyJS(buf, path);
     context.putImageData(image, 0, 0);
+   };
 
    reduceManyHorizontalJS = function reduceManyHorizontalJS(canvas, reps, callback) {
        for (var i = 0; i < reps; i++) {
@@ -289,5 +290,5 @@ function transposeJS(buf, context) {
          callback();
      }
    };
-};
+
 })();
