@@ -49,7 +49,10 @@ function fillArrFromPA(arr, pa) {
 function fillBufFromPA(buf, pa) { fillArrFromPA(buf.data, pa); return buf; }
 
 function paFromBuf(buf) {
-  function filler(i) { return buf.data[i]; }
+  var data = buf.data;
+  function filler(i) {
+    return data[i];
+  }
   var pa = new ParallelArray(buf.data.length, filler);
   pa.width = buf.width;
   pa.height = buf.height;
@@ -318,10 +321,10 @@ function computeEnergyPACore(pa) {
     var width = pa.width;
 
     var ePAs = new Array(height);
-    ePAs[0] = new ParallelArray(width, function (x) { return pa.get(x * 4); });
+    var above = new ParallelArray(width, function (x) { return pa.get(x * 4); });
+    ePAs[0] = above;
     for (var y = 1; y < height; y++) {
-      var above = ePAs[y-1];
-      ePAs[y] = new ParallelArray(width,
+      var curr = new ParallelArray(width,
         function (x) {
           var p = above.get(x);
           var lft = p;
@@ -337,6 +340,8 @@ function computeEnergyPACore(pa) {
           var e = pa.get((x + y * width) * 4) + p;
           return e;
         });
+      ePAs[y] = curr;
+      above = curr;
     }
     return ePAs;
 }
