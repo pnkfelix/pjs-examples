@@ -28,7 +28,7 @@
 "use strict";
 
 // configurable options
-var imageSrc = "tower.jpg";
+var imageSrc = "tower-tiny.jpg";
 var previewSteps = 2;
 var recompileThreshold = 100; // experiments show 100 is a good threshold
 
@@ -62,7 +62,9 @@ function setStatusBar(msg) {
 
 function addLogMessage(msg) {
     var text = document.createTextNode(msg);
-    logArea.appendChild(text);
+    var tt = document.createElement('code');
+    tt.appendChild(text);
+    logArea.appendChild(tt);
     logArea.appendChild(document.createElement('br'));
 }
 

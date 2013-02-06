@@ -249,46 +249,73 @@ function transposeJS(buf, context) {
     return buf1;
 }
 
+   stages = new Array(7);
+   function clearStages() {
+     for (var i = 0; i < stages.length; i++) {
+       stages[i] = 0;
+     }
+   }
+
+   function reduceOneCore(context, transform, cutPath) {
+     var buf = context.getImageData(0, 0, virtualWidth, virtualHeight);
+     var t_start = new Date();
+     buf = transform(buf);
+     var t_transform01 = new Date();
+     var gray = grayScaleJS(buf, context);
+     var t_grayscale02 = new Date();
+     var edges = detectEdgesJS(gray, context);
+     var t_detectedges03 = new Date();
+     var t_end = t_detectedges03;
+     parallelComponentTime += (t_end - t_start);
+     var energy = computeEnergyJS(edges);
+     var t_computeenergy04 = new Date();
+     var path = findPathJS(energy);
+     var t_findpath05 = new Date();
+     var image = cutPathHorizontallyJS(buf, path);
+     var t_cutpath06 = new Date();
+     context.putImageData(image, 0, 0);
+
+     stages[1] += t_transform01 - t_start;
+     stages[2] += t_grayscale02 - t_transform01;
+     stages[3] += t_detectedges03 - t_grayscale02;
+     stages[4] += t_computeenergy04 - t_detectedges03;
+     stages[5] += t_findpath05 - t_computeenergy04;
+     stages[6] += t_cutpath06 - t_findpath05;
+   };
+
    reduceOneHorizontalJS = function reduceOneHorizontalJS(canvas) {
-    var context = canvas.getContext("2d");
-    var buf = context.getImageData(0, 0, virtualWidth, virtualHeight);
-    var t1 = new Date();
-    var gray = grayScaleJS(buf, context);
-    var edges = detectEdgesJS(gray, context);
-    var t2 = new Date();
-    parallelComponentTime += (t2 - t1);
-    var energy = computeEnergyJS(edges);
-    var path = findPathJS(energy);
-    var image = cutPathHorizontallyJS(buf, path);
-    context.putImageData(image, 0, 0);
-};
+     var context = canvas.getContext("2d");
+     function id(pa) { return pa; }
+     reduceOneCore(context, id, cutPathHorizontallyJS);
+   };
 
    reduceOneVerticalJS = function reduceOneVerticalJS(canvas) {
     var context = canvas.getContext("2d");
-    var buf = context.getImageData(0, 0, virtualWidth, virtualHeight);
-    var t1 = new Date();
-    var gray = grayScaleJS(transposeJS(buf, context), context);
-    var edges = detectEdgesJS(gray, context);
-    var t2 = new Date();
-    parallelComponentTime += (t2 - t1);
-    var energy = computeEnergyJS(edges);
-    var path = findPathJS(energy);
-    var image = cutPathVerticallyJS(buf, path);
-    context.putImageData(image, 0, 0);
+     function flip(pa) { return transposeJS(pa, context); }
+     reduceOneCore(context, flip, cutPathVerticallyJS);
    };
 
+   var callCount = 0;
    reduceManyHorizontalJS = function reduceManyHorizontalJS(canvas, reps, callback) {
-       for (var i = 0; i < reps; i++) {
+     clearStages();
+     for (var i = 0; i < reps; i++) {
          reduceOneHorizontalJS(theCanvas);
          callback();
      }
+
+     callCount++;
+     addLogMessage("Hello " + callCount + " " + JSON.stringify(stages) + " from reduceManyHorizontalJS");
    };
 
    reduceManyVerticalJS = function reduceManyVerticalJS(canvas, reps, callback) {
+     clearStages();
      for (var i = 0; i < reps; i++) {
          reduceOneVerticalJS(theCanvas);
          callback();
      }
+
+     callCount++;
+     addLogMessage("Hello " + callCount + " " + JSON.stringify(stages) + " from reduceManyVerticalJS");
    };
 
 })();

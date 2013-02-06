@@ -474,20 +474,40 @@ function transposePA(pa) {
     return pa2;
 }
 
+   stages = new Array(7);
+   function clearStages() {
+     for (var i = 0; i < stages.length; i++) {
+       stages[i] = 0;
+     }
+   }
+
    function reduceOneCore(context, transform, cutPath) {
      var buf = context.getImageData(0, 0, virtualWidth, virtualHeight);
-     var t1 = new Date();
+     var t_start = new Date();
      var pa = paFromBuf(buf);
      pa = transform(pa);
+     var t_transform01 = new Date();
      pa = grayScalePACore(pa);
+     var t_grayscale02 = new Date();
      var pa2 = detectEdgesPACore(pa);
-     var t2 = new Date();
-     parallelComponentTime += (t2 - t1);
+     var t_detectedges03 = new Date();
+     var t_end = t_detectedges03;
+     parallelComponentTime += (t_end - t_start);
      var ePAs = computeEnergyPACore(pa2);
+     var t_computeenergy04 = new Date();
      var energy = newArrayFromArrayofPA(ePAs);
      var path = findPathJS(energy);
+     var t_findpath05 = new Date();
      var image = cutPath(buf, path);
+     var t_cutpath06 = new Date();
      context.putImageData(image, 0, 0);
+
+     stages[1] += t_transform01 - t_start;
+     stages[2] += t_grayscale02 - t_transform01;
+     stages[3] += t_detectedges03 - t_grayscale02;
+     stages[4] += t_computeenergy04 - t_detectedges03; // bulk of time is here
+     stages[5] += t_findpath05 - t_computeenergy04;
+     stages[6] += t_cutpath06 - t_findpath05;
    }
 
    reduceOneHorizontalPA = function reduceOneHorizontalPA(canvas) {
@@ -502,17 +522,26 @@ function transposePA(pa) {
      reduceOneCore(context, flip, cutPathVerticallyJS);
    };
 
+   var callCount = 0;
    reduceManyHorizontalPA = function reduceManyHorizontalPA(canvas, reps, callback) {
+     clearStages();
        for (var i = 0; i < reps; i++) {
          reduceOneHorizontalPA(canvas);
          callback();
      }
+
+     callCount++;
+     addLogMessage("Hello " + callCount + " " + JSON.stringify(stages) + " from reduceManyHorizontalPA");
    };
 
    reduceManyVerticalPA = function reduceManyVerticalPA(canvas, reps, callback) {
+     clearStages();
      for (var i = 0; i < reps; i++) {
          reduceOneVerticalPA(canvas);
          callback();
      }
+
+     callCount++;
+     addLogMessage("Hello " + callCount + " " + JSON.stringify(stages) + " from reduceManyVerticalPA");
    };
 })();
