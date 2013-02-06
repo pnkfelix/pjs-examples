@@ -183,31 +183,19 @@ function resize_loop() {
     if (impl === "js") {
         while ((virtualWidth > bottomX) || (virtualHeight > bottomY)) {
             if (virtualWidth > bottomX) {
-                for (var i = 0; i < xReps; i++) {
-                    reduceOneHorizontalJS(theCanvas);
-                    virtualWidth--;
-                }
+                reduceManyHorizontalJS(theCanvas, xReps, function () { virtualWidth--; });
             }
             if (virtualHeight > bottomY) {
-                for (var i = 0; i < yReps; i++) {
-                    reduceOneVerticalJS(theCanvas);
-                    virtualHeight--;
-                }
+                reduceManyVerticalJS(theCanvas, yReps, function () { virtualHeight--; });
             }
         }
     } else {
         while ((virtualWidth > bottomX) || (virtualHeight > bottomY)) {
             if (virtualWidth > bottomX) {
-                for (var i = 0; i < xReps; i++) {
-                    reduceOneHorizontalPA(theCanvas);
-                    virtualWidth--;
-                }
+                reduceManyHorizontalPA(theCanvas, xReps, function () { virtualWidth--; });
             }
             if (virtualHeight > bottomY) {
-                for (var i = 0; i < yReps; i++) {
-                    reduceOneVerticalPA(theCanvas);
-                    virtualHeight--;
-                }
+                reduceManyVerticalPA(theCanvas, yReps, function () { virtualHeight--; });
             }
         }
     }
