@@ -257,9 +257,9 @@ function transposeJS(buf, context) {
    }
 
    function reduceOneCore(context, transform, cutPath) {
-     var buf = context.getImageData(0, 0, virtualWidth, virtualHeight);
+     var buf_orig = context.getImageData(0, 0, virtualWidth, virtualHeight);
      var t_start = new Date();
-     buf = transform(buf);
+     var buf = transform(buf_orig);
      var t_transform01 = new Date();
      var gray = grayScaleJS(buf, context);
      var t_grayscale02 = new Date();
@@ -271,7 +271,7 @@ function transposeJS(buf, context) {
      var t_computeenergy04 = new Date();
      var path = findPathJS(energy);
      var t_findpath05 = new Date();
-     var image = cutPathHorizontallyJS(buf, path);
+     var image = cutPath(buf_orig, path);
      var t_cutpath06 = new Date();
      context.putImageData(image, 0, 0);
 
@@ -299,7 +299,7 @@ function transposeJS(buf, context) {
    reduceManyHorizontalJS = function reduceManyHorizontalJS(canvas, reps, callback) {
      clearStages();
      for (var i = 0; i < reps; i++) {
-         reduceOneHorizontalJS(theCanvas);
+         reduceOneHorizontalJS(canvas);
          callback();
      }
 
@@ -310,7 +310,7 @@ function transposeJS(buf, context) {
    reduceManyVerticalJS = function reduceManyVerticalJS(canvas, reps, callback) {
      clearStages();
      for (var i = 0; i < reps; i++) {
-         reduceOneVerticalJS(theCanvas);
+         reduceOneVerticalJS(canvas);
          callback();
      }
 
