@@ -249,7 +249,7 @@ function transposeJS(buf, context) {
     return buf1;
 }
 
-   stages = new Array(7);
+   stages = new Array(6);
    function clearStages() {
      for (var i = 0; i < stages.length; i++) {
        stages[i] = 0;
@@ -275,12 +275,12 @@ function transposeJS(buf, context) {
      var t_cutpath06 = new Date();
      context.putImageData(image, 0, 0);
 
-     stages[1] += t_transform01 - t_start;
-     stages[2] += t_grayscale02 - t_transform01;
-     stages[3] += t_detectedges03 - t_grayscale02;
-     stages[4] += t_computeenergy04 - t_detectedges03;
-     stages[5] += t_findpath05 - t_computeenergy04;
-     stages[6] += t_cutpath06 - t_findpath05;
+     stages[0] += t_transform01 - t_start;
+     stages[1] += t_grayscale02 - t_transform01;
+     stages[2] += t_detectedges03 - t_grayscale02;
+     stages[3] += t_computeenergy04 - t_detectedges03;
+     stages[4] += t_findpath05 - t_computeenergy04;
+     stages[5] += t_cutpath06 - t_findpath05;
    };
 
    reduceOneHorizontalJS = function reduceOneHorizontalJS(canvas) {
