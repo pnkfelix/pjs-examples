@@ -29,6 +29,7 @@
 
 // configurable options
 var imageSrc = "tower-tiny.jpg";
+// var imageSrc = "squares-pico.png";
 var previewSteps = 2;
 var recompileThreshold = 100; // experiments show 100 is a good threshold
 
