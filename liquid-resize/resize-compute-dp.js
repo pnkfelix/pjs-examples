@@ -35,6 +35,7 @@ DOI=10.1145/1276377.1276390 http://doi.acm.org/10.1145/1276377.1276390
 
 var reduceOneHorizontalPA, reduceOneVerticalPA;
 var reduceManyHorizontalPA, reduceManyVerticalPA;
+var extractTimingsHorizontalPA, extractTimingsVerticalPA;
 
 (function () {
 
@@ -500,8 +501,9 @@ function transposePA(pa) {
     return pa2;
 }
 
-   stages = new Array(6);
-   function clearStages() {
+   var horizontalStages = [0,0,0,0,0,0];
+   var verticalStages = [0,0,0,0,0,0];
+   function clearStages(stages) {
      for (var i = 0; i < stages.length; i++) {
        stages[i] = 0;
      }
@@ -528,12 +530,13 @@ function transposePA(pa) {
      var t_cutpath06 = new Date();
      context.putImageData(image, 0, 0);
 
-     stages[0] += t_transform01 - t_start;
-     stages[1] += t_grayscale02 - t_transform01;       // significant time here
-     stages[2] += t_detectedges03 - t_grayscale02;
-     stages[3] += t_computeenergy04 - t_detectedges03; // bulk of time is here
-     stages[4] += t_findpath05 - t_computeenergy04;
-     stages[5] += t_cutpath06 - t_findpath05;
+     horizontalStages[0] += t_transform01 - t_start;
+     horizontalStages[1] += t_grayscale02 - t_transform01;       // significant time here
+     horizontalStages[2] += t_detectedges03 - t_grayscale02;
+     horizontalStages[3] += t_computeenergy04 - t_detectedges03; // bulk of time is here
+     horizontalStages[4] += t_findpath05 - t_computeenergy04;
+     
+horizontalStages[5] += t_cutpath06 - t_findpath05;
    }
 
    function reduceOneCore2(context, transform, cutPath) {
@@ -557,12 +560,12 @@ function transposePA(pa) {
      var t_cutpath06 = new Date();
      context.putImageData(image, 0, 0);
 
-     stages[0] += t_transform01 - t_start;
-     stages[1] += t_grayscale02 - t_transform01;       // significant time here
-     stages[2] += t_detectedges03 - t_grayscale02;
-     stages[3] += t_computeenergy04 - t_detectedges03; // bulk of time is here
-     stages[4] += t_findpath05 - t_computeenergy04;
-     stages[5] += t_cutpath06 - t_findpath05;
+     verticalStages[0] += t_transform01 - t_start;
+     verticalStages[1] += t_grayscale02 - t_transform01;       // significant time here
+     verticalStages[2] += t_detectedges03 - t_grayscale02;
+     verticalStages[3] += t_computeenergy04 - t_detectedges03; // bulk of time is here
+     verticalStages[4] += t_findpath05 - t_computeenergy04;
+     verticalStages[5] += t_cutpath06 - t_findpath05;
    }
 
    reduceOneHorizontalPA = function reduceOneHorizontalPA(canvas) {
@@ -579,24 +582,34 @@ function transposePA(pa) {
 
    var callCount = 0;
    reduceManyHorizontalPA = function reduceManyHorizontalPA(canvas, reps, callback) {
-     clearStages();
        for (var i = 0; i < reps; i++) {
          reduceOneHorizontalPA(canvas);
          callback();
      }
 
      callCount++;
-     addLogMessage("Hello " + callCount + " " + JSON.stringify(stages) + " from reduceManyHorizontalPA");
    };
 
    reduceManyVerticalPA = function reduceManyVerticalPA(canvas, reps, callback) {
-     clearStages();
      for (var i = 0; i < reps; i++) {
          reduceOneVerticalPA(canvas);
          callback();
      }
 
      callCount++;
-     addLogMessage("Hello " + callCount + " " + JSON.stringify(stages) + " from reduceManyVerticalPA");
+   };
+
+   extractTimingsHorizontalPA = function extractTimingsHorizontalPA() {
+     var s = ("Hello " + callCount + " " + JSON.stringify(horizontalStages)
+              + " from HorizontalPA");
+     clearStages(horizontalStages);
+     return s;
+   };
+
+   extractTimingsVerticalPA = function extractTimingsVerticalPA() {
+     var s = ("Hello " + callCount + " " + JSON.stringify(verticalStages)
+              + " from VerticalPA");
+     clearStages(verticalStages);
+     return s;
    };
 })();

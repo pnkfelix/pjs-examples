@@ -192,6 +192,8 @@ function resize_loop() {
                 reduceManyVerticalJS(theCanvas, yReps, function () { virtualHeight--; });
             }
         }
+        addLogMessage(extractTimingsHorizontalJS());
+        addLogMessage(extractTimingsVerticalJS());
     } else {
         while ((virtualWidth > bottomX) || (virtualHeight > bottomY)) {
             if (virtualWidth > bottomX) {
@@ -201,6 +203,8 @@ function resize_loop() {
                 reduceManyVerticalPA(theCanvas, yReps, function () { virtualHeight--; });
             }
         }
+        addLogMessage(extractTimingsHorizontalPA());
+        addLogMessage(extractTimingsVerticalPA());
     }
     saveImage();
     var end = new Date();

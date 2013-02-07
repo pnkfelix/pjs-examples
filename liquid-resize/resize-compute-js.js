@@ -35,6 +35,7 @@ DOI=10.1145/1276377.1276390 http://doi.acm.org/10.1145/1276377.1276390
 
 var reduceOneHorizontalJS, reduceOneVerticalJS;
 var reduceManyHorizontalJS, reduceManyVerticalJS;
+var extractTimingsHorizontalJS, extractTimingsVerticalJS;
 
 (function () {
 
@@ -249,14 +250,15 @@ function transposeJS(buf, context) {
     return buf1;
 }
 
-   stages = new Array(6);
-   function clearStages() {
+   var horizontalStages = [0,0,0,0,0,0];
+   var verticalStages = [0,0,0,0,0,0];
+   function clearStages(stages) {
      for (var i = 0; i < stages.length; i++) {
        stages[i] = 0;
      }
    }
 
-   function reduceOneCore(context, transform, cutPath) {
+   function reduceOneCore(context, transform, cutPath, stages) {
      var buf_orig = context.getImageData(0, 0, virtualWidth, virtualHeight);
      var t_start = new Date();
      var buf = transform(buf_orig);
@@ -286,36 +288,46 @@ function transposeJS(buf, context) {
    reduceOneHorizontalJS = function reduceOneHorizontalJS(canvas) {
      var context = canvas.getContext("2d");
      function id(pa) { return pa; }
-     reduceOneCore(context, id, cutPathHorizontallyJS);
+     reduceOneCore(context, id, cutPathHorizontallyJS, horizontalStages);
    };
 
    reduceOneVerticalJS = function reduceOneVerticalJS(canvas) {
     var context = canvas.getContext("2d");
      function flip(pa) { return transposeJS(pa, context); }
-     reduceOneCore(context, flip, cutPathVerticallyJS);
+     reduceOneCore(context, flip, cutPathVerticallyJS, verticalStages);
    };
 
    var callCount = 0;
    reduceManyHorizontalJS = function reduceManyHorizontalJS(canvas, reps, callback) {
-     clearStages();
      for (var i = 0; i < reps; i++) {
          reduceOneHorizontalJS(canvas);
          callback();
      }
 
      callCount++;
-     addLogMessage("Hello " + callCount + " " + JSON.stringify(stages) + " from reduceManyHorizontalJS");
    };
 
    reduceManyVerticalJS = function reduceManyVerticalJS(canvas, reps, callback) {
-     clearStages();
      for (var i = 0; i < reps; i++) {
          reduceOneVerticalJS(canvas);
          callback();
      }
 
      callCount++;
-     addLogMessage("Hello " + callCount + " " + JSON.stringify(stages) + " from reduceManyVerticalJS");
+   };
+
+   extractTimingsHorizontalJS = function extractTimingsHorizontalJS() {
+     var s = ("Hello " + callCount + " " + JSON.stringify(horizontalStages)
+               + " from HorizontalJS");
+     clearStages(horizontalStages);
+     return s;
+   };
+
+   extractTimingsVerticalJS = function extractTimingsVerticalJS() {
+     var s = ("Hello " + callCount + " " + JSON.stringify(verticalStages)
+              + " from VerticalJS");
+     clearStages(verticalStages);
+     return s;
    };
 
 })();
