@@ -42,7 +42,7 @@ var extractTimingsHorizontalPA, extractTimingsVerticalPA;
 function fillArrFromPA(arr, pa) {
   var i;
   for (i = 0; i < pa.length; i++) {
-    arr[i] = pa.get(i);
+    arr[i] = pa.buffer[i+0]; // pa.get(i+0);
   }
   return arr;
 }
@@ -74,18 +74,6 @@ function newArray(nrows, ncols) {
         a[i] = new Array(ncols);
     }
     return a;
-}
-
-function newArrayFromPA(pa) {
-  var nrows = pa.shape[0];
-  var ncols = pa.shape[1];
-  var a = newArray(nrows, ncols);
-  for (var i = 0; i < nrows; i++) {
-    for (var j = 0; j < ncols; j++) {
-      a[i][j] = pa.get(i,j);
-    }
-  }
-  return a;
 }
 
 function newArrayFromArrayofPA(apa) {
@@ -144,9 +132,9 @@ function grayScalePACore1(pa) {
         //if ((i % 4) == 3)
         //  return 255;
         var j = i - (i % 4);
-        var r = pa.get(j);
-        var g = pa.get(j+1);
-        var b = pa.get(j+2);
+        var r = pa.buffer[j+0]; // pa.get(j+0);
+        var g = pa.buffer[j+1]; // pa.get(j+1);
+        var b = pa.buffer[j+2]; // pa.get(j+2);
         var lum = (0.299*r + 0.587*g + 0.114*g);
         return lum;
       });
@@ -161,9 +149,9 @@ function grayScalePACore2(pa) {
         //if ((i % 4) == 3)
         //  return 255;
         var j = i - (i % 4);
-        var r = pa.get(j);
-        var g = pa.get(j+1);
-        var b = pa.get(j+2);
+        var r = pa.buffer[j+0]; // pa.get(j+0);
+        var g = pa.buffer[j+1]; // pa.get(j+1);
+        var b = pa.buffer[j+2]; // pa.get(j+2);
         var lum = (0.299*r + 0.587*g + 0.114*g);
         return lum;
       });
@@ -184,15 +172,15 @@ function grayScalePA_v1(buf, context) {
 
     var pa = pa4FromBuf(buf);
     var pa1 = pa.map(function (d) {
-                       var r = d.get(0);
-                       var g = d.get(1);
-                       var b = d.get(2);
+                       var r = d.buffer[0]; // d.get(0);
+                       var g = d.buffer[1]; // d.get(1);
+                       var b = d.buffer[2]; // d.get(2);
                        var lum = (0.299*r + 0.587*g + 0.114*g);
                        return lum;
                      });
     var pa2 = new ParallelArray(buf.data.length,
       function (i) {
-        return ((i % 4) < 3) ? pa1.get((i / 4) | 0) : 255;
+        return ((i % 4) < 3) ? pa1.buffer[(i / 4) | 0] : 255;
       });
 
     pa2.width = pa.width;
@@ -282,7 +270,7 @@ function detectEdgesPACore(pa) {
             var newX = x + offX;
             if ((newX >= 0) && (newX < width) && (newY >= 0) && (newY < height)) {
               var pointIndex = (x + offX + (y + offY) * width) * 4;
-              var e = pa.get(pointIndex);
+              var e = pa.buffer[pointIndex];
               totalX += e * sobelX[offY + 1][offX + 1];
               totalY += e * sobelY[offY + 1][offX + 1];
             }
@@ -339,23 +327,23 @@ function computeEnergyPACore(pa) {
     var width = pa.width;
 
     var ePAs = new Array(height);
-    var above = new ParallelArray(width, function (x) { return pa.get(x * 4); });
+    var above = new ParallelArray(width, function (x) { return pa.buffer[x * 4]; });
     ePAs[0] = above;
     for (var y = 1; y < height; y++) {
       var curr = new ParallelArray(width,
         function (x) {
-          var p = above.get(x);
+          var p = above.buffer[x];
           var lft = p;
           var rgt = p;
           if (x > 0) {
-            lft = above.get(x-1);
+            lft = above.buffer[x-1];
             if (lft < p) p = lft;
           }
           if (x < (width - 1)) {
-            rgt = above.get(x+1);
+            rgt = above.buffer[x+1];
             if (rgt < p) p = rgt;
           }
-          var e = pa.get((x + y * width) * 4) + p;
+          var e = pa.buffer[(x + y * width) * 4] + p;
           return e;
         });
       ePAs[y] = curr;
@@ -493,7 +481,7 @@ function transposePA(pa) {
         var x = j / height | 0;
         var y = j % height;
 
-        return pa.get(y*width*4 + x*4 + offs);
+        return pa.buffer[y*width*4 + x*4 + offs];
       });
 
     pa2.height = pa.width;
