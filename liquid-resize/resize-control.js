@@ -53,7 +53,9 @@ var bottomX = -1;
 var bottomY = -1;
 var parallelComponentTime = 0;
 var lastTime = {js: undefined, dp: undefined};
-var scoreboard = {js: {full: document.getElementById("seqFull"), par: document.getElementById("seqPar")},
+var scoreboard = {
+                  ar: {full: document.getElementById("arrFull"), par: document.getElementById("arrPar")},
+                  js: {full: document.getElementById("seqFull"), par: document.getElementById("seqPar")},
                   dp: {full: document.getElementById("parFull"), par: document.getElementById("parPar")},
                   speedup: {full: document.getElementById("speedupFull"), par: document.getElementById("speedupPar")}};
  
@@ -73,6 +75,10 @@ function updateScoreboard() {
     function updateOne(impl, kind) {
         scoreboard[impl][kind].innerHTML = lastTime[impl][kind] / 1000 + "s";
     }
+    if (lastTime.ar) {
+        updateOne("ar", "full");
+        updateOne("ar", "par");
+    }
     if (lastTime.js) {
         updateOne("js", "full");
         updateOne("js", "par");
@@ -91,6 +97,8 @@ function resetScoreboard() {
     function resetOne(impl, kind) {
         scoreboard[impl][kind].innerHTML = "--";
     }
+    resetOne("ar", "full");
+    resetOne("ar", "par");
     resetOne("js", "full");
     resetOne("js", "par");
     resetOne("dp", "full");
@@ -194,6 +202,17 @@ function resize_loop() {
         }
         addLogMessage(extractTimingsHorizontalJS());
         addLogMessage(extractTimingsVerticalJS());
+    } else if (impl === "ar") {
+        while ((virtualWidth > bottomX) || (virtualHeight > bottomY)) {
+            if (virtualWidth > bottomX) {
+                reduceManyHorizontalAR(theCanvas, xReps, function () { virtualWidth--; });
+            }
+            if (virtualHeight > bottomY) {
+                reduceManyVerticalAR(theCanvas, yReps, function () { virtualHeight--; });
+            }
+        }
+        addLogMessage(extractTimingsHorizontalAR());
+        addLogMessage(extractTimingsVerticalAR());
     } else {
         while ((virtualWidth > bottomX) || (virtualHeight > bottomY)) {
             if (virtualWidth > bottomX) {
@@ -210,7 +229,7 @@ function resize_loop() {
     var end = new Date();
     lastTime[impl] = {full: (end-start), par: (parallelComponentTime)};
     updateScoreboard();
-    setStatusBar((impl == "js" ? "Sequential" : "Parallel") + " implementation finished in " + (end-start)/1000 + "s (Parallel component took " + parallelComponentTime/1000 + "s.). Choose another operation...");
+    setStatusBar((impl == "js" ? "Seq Buffer" : impl == "ar" ? "Seq Array" : "Parallel") + " implementation finished in " + (end-start)/1000 + "s (Parallel component took " + parallelComponentTime/1000 + "s.). Choose another operation...");
     theCanvas.width = virtualWidth;
     theCanvas.height = virtualHeight;
     restoreImage();
