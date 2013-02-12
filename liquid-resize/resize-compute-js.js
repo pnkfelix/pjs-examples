@@ -350,20 +350,17 @@ function newArray(nrows, ncols) {
 
 function grayScaleAR(buf, context) {
     var data = buf.data;
-    var data1 = new Array(buf.width * buf.height * 4);
+    var data1 = new Array(buf.width * buf.height);
     data1.width = buf.width;
     data1.height = buf.height;
 
-    var i;
-    for (i = 0; i < data.length; i+=4) {
+    var i; var j;
+    for (i = 0, j = 0; i < data.length; i+=4, j+=1) {
         var r = data[i];
         var g = data[i+1];
         var b = data[i+2];
         var lum = (0.299*r + 0.587*g + 0.114*g);
-        data1[i] = lum;
-        data1[i+1] = lum;
-        data1[i+2] = lum;
-        data1[i+3] = 255;
+        data1[j] = lum;
     }
     return data1;
 }
@@ -394,7 +391,7 @@ function detectEdgesAR(data, context) {
                 for (var offX = -1; offX <= 1; offX++) {
                     var newX = x + offX;
                     if ((newX >= 0) && (newX < width) && (newY >= 0) && (newY < height)) {
-                        var pointIndex = (x + offX + (y + offY) * data.width) * 4;
+                        var pointIndex = x + offX + (y + offY) * data.width;
                         var e = data[pointIndex];
                         totalX += e * sobelX[offY + 1][offX + 1];
                         totalY += e * sobelY[offY + 1][offX + 1];
@@ -402,11 +399,8 @@ function detectEdgesAR(data, context) {
                 }
             }
             var total = Math.floor((Math.abs(totalX) + Math.abs(totalY))/8.0);
-            var index = (x + y * data.width) * 4;
+            var index = x + y * data.width;
             data1[index] = total;
-            data1[index+1] = total;
-            data1[index+2] = total;
-            data1[index+3] = 255;
         }
     }
     return data1;
@@ -422,7 +416,7 @@ function computeEnergyAR(buf) {
     var data = buf;
     for (var y = 0; y < height; y++) {
         for (var x = 0; x < width; x++) {
-            var e = data[(x + y * buf.width) * 4];
+            var e = data[x + y * buf.width];
 
             // find min of energy above
             if (y >= 1) {
