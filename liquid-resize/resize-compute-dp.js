@@ -108,11 +108,11 @@ function grayScaleJS(buf, context) {
 
 function grayScalePACoreBuf(buf) {
   var data = buf.data;
-  var pa1 = new ParallelArray(data.length,
+  var pa1 = new ParallelArray(data.length/4,
                               function(j) {
-                                var r = data[j+0]; // pa.get(j+0);
-                                var g = data[j+1]; // pa.get(j+1);
-                                var b = data[j+2]; // pa.get(j+2);
+                                var r = data[j*4+0]; // pa.get(j+0);
+                                var g = data[j*4+1]; // pa.get(j+1);
+                                var b = data[j*4+2]; // pa.get(j+2);
                                 var lum = (0.299*r + 0.587*g + 0.114*g);
                                 return lum;
                               });

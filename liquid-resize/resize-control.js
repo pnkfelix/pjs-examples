@@ -54,6 +54,7 @@ var bottomY = -1;
 var parallelComponentTime = 0;
 var lastTime = {js: undefined, dp: undefined};
 var scoreboard = {
+                  ta: {full: document.getElementById("tarFull"), par: document.getElementById("tarPar")},
                   ar: {full: document.getElementById("arrFull"), par: document.getElementById("arrPar")},
                   js: {full: document.getElementById("seqFull"), par: document.getElementById("seqPar")},
                   dp: {full: document.getElementById("parFull"), par: document.getElementById("parPar")},
@@ -79,6 +80,10 @@ function updateScoreboard() {
         updateOne("ar", "full");
         updateOne("ar", "par");
     }
+    if (lastTime.ta) {
+        updateOne("ta", "full");
+        updateOne("ta", "par");
+    }
     if (lastTime.js) {
         updateOne("js", "full");
         updateOne("js", "par");
@@ -99,6 +104,8 @@ function resetScoreboard() {
     }
     resetOne("ar", "full");
     resetOne("ar", "par");
+    resetOne("ta", "full");
+    resetOne("ta", "par");
     resetOne("js", "full");
     resetOne("js", "par");
     resetOne("dp", "full");
@@ -213,6 +220,17 @@ function resize_loop() {
         }
         addLogMessage(extractTimingsHorizontalAR());
         addLogMessage(extractTimingsVerticalAR());
+    } else if (impl === "ta") {
+        while ((virtualWidth > bottomX) || (virtualHeight > bottomY)) {
+            if (virtualWidth > bottomX) {
+                reduceManyHorizontalTA(theCanvas, xReps, function () { virtualWidth--; });
+            }
+            if (virtualHeight > bottomY) {
+                reduceManyVerticalTA(theCanvas, yReps, function () { virtualHeight--; });
+            }
+        }
+        addLogMessage(extractTimingsHorizontalTA());
+        addLogMessage(extractTimingsVerticalTA());
     } else {
         while ((virtualWidth > bottomX) || (virtualHeight > bottomY)) {
             if (virtualWidth > bottomX) {
