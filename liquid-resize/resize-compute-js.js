@@ -644,10 +644,10 @@ function newArray(nrows, ncols) {
 
 function grayScaleTA(buf, context) {
     var data = buf.data;
-    var data1 = new Array(buf.width * buf.height);
-    data1.width = buf.width;
-    data1.height = buf.height;
-
+    var buf1 = new ArrayBuffer(buf.width * buf.height);
+    var data1 = new Uint8Array(buf1);
+    buf1.width = buf.width;
+    buf1.height = buf.height;
     var i; var j;
     for (i = 0, j = 0; i < data.length; i+=4, j+=1) {
         var r = data[i];
@@ -656,15 +656,17 @@ function grayScaleTA(buf, context) {
         var lum = (0.299*r + 0.587*g + 0.114*g);
         data1[j] = lum;
     }
-    return data1;
+    return buf1;
 }
 
 // Edge detection; returns data with detected edges
 
-function detectEdgesTA(data, context) {
-    var data1 = new Array(data.length);
-    data1.width = data.width;
-    data1.height = data.height;
+function detectEdgesTA(buf, context) {
+    var data  = new Uint8Array(buf);
+    var buf1  = new ArrayBuffer(data.length);
+    var data1 = new Uint8Array(buf1);
+    buf1.width = buf.width;
+    buf1.height = buf.height;
     var sobelX =  [[-1.0,  0.0, 1.0],
                     [-2.0, 0.0, 2.0],
                     [-1.0, 0.0, 1.0]];
@@ -672,8 +674,8 @@ function detectEdgesTA(data, context) {
                     [0.0, 0.0, 0.0],
                     [-1.0, -2.0, -1.0]];
 
-    var height = data.height;
-    var width = data.width;
+    var height = buf.height;
+    var width = buf.width;
 
     for (var y = 0; y < height; y++) {
         for (var x = 0; x < width; x++) {
@@ -685,7 +687,7 @@ function detectEdgesTA(data, context) {
                 for (var offX = -1; offX <= 1; offX++) {
                     var newX = x + offX;
                     if ((newX >= 0) && (newX < width) && (newY >= 0) && (newY < height)) {
-                        var pointIndex = x + offX + (y + offY) * data.width;
+                        var pointIndex = x + offX + (y + offY) * buf.width;
                         var e = data[pointIndex];
                         totalX += e * sobelX[offY + 1][offX + 1];
                         totalY += e * sobelY[offY + 1][offX + 1];
@@ -693,11 +695,11 @@ function detectEdgesTA(data, context) {
                 }
             }
             var total = Math.floor((Math.abs(totalX) + Math.abs(totalY))/8.0);
-            var index = x + y * data.width;
+            var index = x + y * buf.width;
             data1[index] = total;
         }
     }
-    return data1;
+    return buf1;
 }
 
 // Compute energy and return an array
@@ -707,7 +709,7 @@ function computeEnergyTA(buf) {
     var width = buf.width;
     var energy = newArray(height, width);
     energy[0][0] = 0;
-    var data = buf;
+    var data = new Uint8Array(buf);
     for (var y = 0; y < height; y++) {
         for (var x = 0; x < width; x++) {
             var e = data[x + y * buf.width];
