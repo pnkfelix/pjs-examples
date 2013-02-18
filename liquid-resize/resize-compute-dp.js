@@ -47,7 +47,17 @@ function fillArrFromPA(arr, pa) {
   return arr;
 }
 
-function fillBufFromPA(buf, pa) { fillArrFromPA(buf.data, pa); return buf; }
+function fillBufFromPA(buf, pa) {
+  var i; var j = 0;
+  var arr = buf.data;
+  for (i = 0; i < pa.length; i++, j+=4) {
+    arr[j] = pa.buffer[i+0];
+    arr[j+1] = pa.buffer[i+1];
+    arr[j+2] = pa.buffer[i+2];
+    arr[j+3] = 255;
+  }
+  return buf;
+}
 
 function paFromBuf(buf) {
   var data = buf.data;
