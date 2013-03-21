@@ -18,6 +18,10 @@ Fake2DParallelArray.prototype.getArray = function() { return this.array; };
 
 function reportWriteJx(jx) { divWriteJx("report", jx); }
 
+function reportTiming(variant, d1, d2) {
+  reportWriteJx(["div", ["code", variant], " time: "+(d2-d1)+"ms"]);
+}
+
 var mouseX = 256;
 var mouseY = 0;
 
@@ -127,12 +131,20 @@ CanvasPoint.prototype.moveOn = function CanvasPoint_move (c) c.moveTo(this.x, th
 var current_canvas_vec = undefined;
 var current_focus = new Focus(new AbsPoint(-200,-200), new Vec(400,400));
 
-CanvasPoint.prototype.toUnitPt = function CanvasPoint_toUnitPt() {
+CanvasPoint.toUnitX = function CanvasPoint_toUnitX(x) {
   var W = current_canvas_vec.x;
+  var ux = x / W;
+  return ux;
+};
+
+CanvasPoint.toUnitY = function CanvasPoint_toUnitY(y) {
   var H = current_canvas_vec.y;
-  var ux = this.x / W;
-  var uy = (H - this.y) / H;
-  return new UnitPoint(ux, uy);
+  var uy = (H - y) / H;
+  return uy;
+};
+
+CanvasPoint.prototype.toUnitPt = function CanvasPoint_toUnitPt() {
+  return new UnitPoint(CanvasPoint.toUnitX(this.x), CanvasPoint.toUnitY(this.y));
 };
 
 UnitPoint.prototype.toCanvasPt = function UnitPoint_toCanvasPt() {
@@ -143,11 +155,21 @@ UnitPoint.prototype.toCanvasPt = function UnitPoint_toCanvasPt() {
   return new CanvasPoint(cx, cy);
 };
 
-CanvasPoint.prototype.toAbsPt = function CanvasPoint_toAbsPt(focus) {
+CanvasPoint.toAbsX = function CanvasPoint_toAbsX(x, focus) {
   focus = focus || current_focus;
-  var normalized = this.toUnitPt();
-  return new AbsPoint(focus.origin.x + normalized.x * focus.width(),
-                      focus.origin.y + normalized.y * focus.height());
+  var nx = CanvasPoint.toUnitX(x);
+  return focus.origin.x + nx * focus.width();
+};
+
+CanvasPoint.toAbsY = function CanvasPoint_toAbsY(y, focus) {
+  focus = focus || current_focus;
+  var ny = CanvasPoint.toUnitY(y);
+  return focus.origin.y + ny * focus.height();
+};
+
+CanvasPoint.prototype.toAbsPt = function CanvasPoint_toAbsPt(focus) {
+  return new AbsPoint(CanvasPoint.toAbsX(this.x, focus),
+                      CanvasPoint.toAbsY(this.y, focus));
 };
 
 AbsPoint.prototype.toCanvasPt = function AbsPoint_toCanvasPt(focus) {
@@ -256,9 +278,10 @@ function insideP(x, y, c) {
 }
 
 function kernel(x, y) {
-  var p = (new CanvasPoint(x,y)).toAbsPt();
-  for (var i in circles) {
-    if (insideP(p.x, p.y, circles[i]))
+  var p_x = CanvasPoint.toAbsX(x);
+  var p_y = CanvasPoint.toAbsY(y);
+  for (var i = 0; i < circles.length; i++) {
+    if (insideP(p_x, p_y, circles[i]))
       return circles[i].c;
   }
   return 0x000040;
@@ -283,7 +306,7 @@ function renderHtm() {
         return kernel(x, y); }, { mode: mode, expect: "any" } );
     var d2 = new Date();
     writeResult(canvas, picture);
-    // reportTiming("Htm", d1, d2);
+    reportTiming("Htm", d1, d2);
     return (d2 - d1);
 }
 
