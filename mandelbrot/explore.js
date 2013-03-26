@@ -129,7 +129,7 @@ CanvasPoint.prototype.lineOn = function CanvasPoint_line (c) c.lineTo(this.x, th
 CanvasPoint.prototype.moveOn = function CanvasPoint_move (c) c.moveTo(this.x, this.y);
 
 var current_canvas_vec = undefined;
-var current_focus = new Focus(new AbsPoint(-200,-200), new Vec(400,400));
+var current_focus = new Focus(new AbsPoint(-1.5,-1), new Vec(2,2));
 
 CanvasPoint.toUnitX = function CanvasPoint_toUnitX(x) {
   var W = current_canvas_vec.x;
@@ -232,6 +232,7 @@ function writeResult (canvas, picture) {
     context.stroke();
     context.closePath();
 
+  if (false) {
     context.beginPath();
     context.strokeStyle = "blue";
     context.lineWidth = 3;
@@ -258,6 +259,7 @@ function writeResult (canvas, picture) {
     context.fillText("ur:"+gur, gur.toCanvasPt().x-127, gur.toCanvasPt().y+10);
     context.fillText("bl:"+gbl, gbl.toCanvasPt().x+3,   gbl.toCanvasPt().y-7);
     context.fillText("br:"+gbr, gbr.toCanvasPt().x-127, gbr.toCanvasPt().y-7);
+  }
 }
 
 var circles =
@@ -277,14 +279,59 @@ function insideP(x, y, c) {
   return sqr(c.x - x) + sqr(c.y - y) < sqr(c.r);
 }
 
+function itercountToColor(n) {
+  if (colorMap) return colorMap[n];
+
+  var block = 0xFFF;
+  var chip_0 = n & 0x00007;
+  var chip_1 = n & 0x00038;
+  var chip_2 = n & 0x001C0;
+  var chip_3 = n & 0x00E00;
+  var chip_4 = n & 0x07000;
+  var chip_5 = n & 0x38000;
+
+  var offset_0 =   6;
+  var offset_1 =  -3;
+  var offset_2 =   0;
+  var offset_3 =   0;
+  var offset_4 = -12;
+  var offset_5 =   0;
+  return ((n & chip_0 << offset_0) |
+          (n & chip_1 << offset_1) |
+          (n & chip_2 << offset_2) |
+          (n & chip_3 << offset_3) |
+          (n & chip_4 << offset_4) |
+          (n & chip_5 << offset_5) );
+}
+
+var maxItersBound = 256 * 4;
+var maxItersStart = 128;
+var maxIters = maxItersStart;
+
+var colorMap = undefined;
+function buildColorMap(maxIters) {
+  colorMap = undefined;
+  var cMap = new Array;
+  for (var i = 0; i < maxIters+1; i++) {
+    cMap[i] = itercountToColor(i);
+  }
+  colorMap = cMap;
+}
+
 function kernel(x, y) {
+  if (false) for (var i = 0; i < circles.length; i++) {
+    if (insideP(p_x, p_y, circles[i])) return circles[i].c;
+  }
   var p_x = CanvasPoint.toAbsX(x);
   var p_y = CanvasPoint.toAbsY(y);
-  for (var i = 0; i < circles.length; i++) {
-    if (insideP(p_x, p_y, circles[i]))
-      return circles[i].c;
+  var Cr = p_x;
+  var Ci = p_y;
+  var I=0, R=0, I2=0, R2=0;
+  var n=0;
+  while ( (R2+I2 < 2.0) && (n < maxIters) ){
+    I = (R+R)*I+Ci; R=R2-I2+Cr;  R2=R*R;  I2=I*I;  n++;
   }
-  return 0x000040;
+  return itercountToColor(n);
 }
 
 function getCanvasHtm() {
@@ -295,6 +342,19 @@ function getCanvasHtm() {
     current_canvas_vec = new Vec(canvas.width, canvas.height);
   }
   return canvas;
+}
+
+function iterate() {
+  if (maxIters < maxItersBound) {
+    maxIters = maxIters << 1;
+    colorMap = undefined;
+    redraw();
+  }
+  establishPeriodicRefinement();
+}
+
+function establishPeriodicRefinement() {
+  window.setTimeout(function() { iterate(); }, 1000);
 }
 
 function renderHtm() {
@@ -327,18 +387,25 @@ function render() {
 }
 
 function pageload() {
-    render();
+    buildColorMap(maxIters);
+    redraw();
     var canvas = getCanvasHtm();
     canvas.addEventListener("mousemove", onMouseMove, false);
     canvas.addEventListener("click", onMouseClick, false);
+    establishPeriodicRefinement();
 }
 
 function onMouseMove(e) {
     var canvas = getCanvasHtm();
     mouseX = e.clientX - canvas.offsetLeft;
     mouseY = e.clientY - canvas.offsetTop;
-    // render();
+    // redraw();
     writeResult(canvas, picture);
+}
+
+function redraw() {
+    render();
+    reportWriteJx(["div", ["small", " drawn, maxIters:"+maxIters]]);
 }
 
 function onMouseClick(e) {
@@ -349,7 +416,6 @@ function onMouseClick(e) {
     var cur = new CanvasPoint(mouseX + sqrad, mouseY - sqrad);
     var new_focus = new Focus(cbl.toAbsPt(), cur.toAbsPt().sub(cbl.toAbsPt()));
     current_focus = new_focus;
-    render();
-    reportWriteJx(["div",
-      ["small", " cbl:"+cbl, " cur:"+cur, " new_focus:"+new_focus]]);
+    maxIters = maxItersStart;
+    redraw();
 }
