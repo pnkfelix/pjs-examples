@@ -41,6 +41,8 @@ DOI=10.1145/1276377.1276390 http://doi.acm.org/10.1145/1276377.1276390
 <body>
 <canvas id="theCanvas"></canvas>
 <hr />
+<ul>
+<li>
 <input type="button" id="btnResize" value="Resize" onclick="resize();"/>
 using
 <select id="impl">
@@ -49,40 +51,46 @@ using
   <option value="js">seq buffer JavaScript</option>
   <option value="dp">data-parallel JavaScript</option>
 </select>
-, or
+,
+</li>
+<li>or
 <input type="button" id="btnReset" value="start over" onclick="reset();"/>
-. You can 
+.
+</li>
+<li>You can 
 <input type="button" id="btnHalve" value="halve" onclick="halve();" />
 the image, as well.
+</li>
+</ul>
 <hr />
 <div id="statusBar"></div>
 <hr />
 <p id="log"></p>
 
-<div style="position:fixed;top:0pt;right:0pt;background-color:#EEEEEE;padding:2em;font-family:sans-serif;font-size:large;height:100%;">
+<div style="position:fixed;top:0pt;right:0pt;background-color:#EEEEEE;padding:2em;font-family:sans-serif;font-size:medium;height:100%;">
 <h2 style="margin-top:0em;"> Scoreboard<a href="javascript:resetScoreboard()" style="font-size:small">[reset]</a></h2>
-<h3>Last Seq JS Array Runtimes</h3>
-<table style="width:100%;font-size:large;">
+<h3>Last Seq JS Array Times</h3>
+<table style="width:100%;font-size:medium;">
 <tr><td>Full</td><td id="arrFull" style="text-align:right;">--</td></tr>
 <tr><td>Parallel Component</td><td id="arrPar" style="text-align:right;">--</td></tr>
 </table>
-<h3>Last Seq JS Typed Array Runtimes</h3>
-<table style="width:100%;font-size:large;">
+<h3>Last Seq JS Typed Array Times</h3>
+<table style="width:100%;font-size:medium;">
 <tr><td>Full</td><td id="tarFull" style="text-align:right;">--</td></tr>
 <tr><td>Parallel Component</td><td id="tarPar" style="text-align:right;">--</td></tr>
 </table>
-<h3>Last Seq JS Buffer Runtimes</h3>
-<table style="width:100%;font-size:large;">
+<h3>Last Seq JS Buffer Times</h3>
+<table style="width:100%;font-size:medium;">
 <tr><td>Full</td><td id="seqFull" style="text-align:right;">--</td></tr>
 <tr><td>Parallel Component</td><td id="seqPar" style="text-align:right;">--</td></tr>
 </table>
-<h3>Last Parallel Runtimes</h3>
-<table style="width:100%;font-size:large;">
+<h3>Last Parallel Times</h3>
+<table style="width:100%;font-size:medium;">
 <tr><td>Full</td><td id="parFull" style="text-align:right;">--</td></tr>
 <tr><td>Parallel Component</td><td id="parPar" style="text-align:right;">--</td></tr>
 </table>
 <h3>Speedup</h3>
-<table style="width:100%;font-size:large;">
+<table style="width:100%;font-size:medium;">
 <tr><td>Full</td><td id="speedupFull" style="text-align:right;font-weight:bold;color:#33AA33;">--</td></tr>
 <tr><td>Parallel Component</td><td id="speedupPar" style="text-align:right;font-weight:bold;color:#33AA33;">--</td></tr>
 </table>
