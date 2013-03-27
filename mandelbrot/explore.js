@@ -469,6 +469,7 @@ function pageload() {
     var canvas = getCanvasHtm();
     canvas.addEventListener("mousemove", onMouseMove, false);
     canvas.addEventListener("click", onMouseClick, false);
+    window.addEventListener("keydown", onKey, true);
     establishPeriodicRefinement();
 }
 
@@ -478,6 +479,25 @@ function onMouseMove(e) {
     mouseY = e.clientY - canvas.offsetTop;
     // redraw();
     writeResult(canvas, picture);
+}
+
+function zoomOut() {
+  // This isn't "right" (I'd prefer we remain centered rather than shifting
+  // the image over) but my naive attempts to do that quickly have not worked,
+  // so making do with this while I move on to more pressing issues.
+  var origin = current_focus.origin;
+  var vec = current_focus.vec;
+  var new_origin = new Vec(origin.x - vec.x, origin.y - vec.y);
+  var new_vec = new Vec(vec.x*2, vec.y*2);
+  var new_focus = new Focus(new_origin, new_vec);
+  current_focus = new_focus;
+}
+
+function onKey(e) {
+  reportWriteJx(["code", "key "+e.keyCode]);
+  switch (e.keyCode) {
+    case 173: zoomOut(); resetRefinement(); redraw();
+  }
 }
 
 function resetRefinement() {
