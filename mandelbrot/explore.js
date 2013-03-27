@@ -17,9 +17,12 @@ Fake2DParallelArray.prototype.flatten = function() { return this; };
 Fake2DParallelArray.prototype.getArray = function() { return this.array; };
 
 function reportWriteJx(jx) { divWriteJx("report", jx); }
+function reportResetOutput() { divResetJx("report"); }
 
 function reportTiming(variant, d1, d2) {
-  reportWriteJx(["div", ["code", variant], " time: "+(d2-d1)+"ms"]);
+  reportWriteJx(["div", ["code", variant],
+                 " maxIters: "+maxIters,
+                 " time: "+(d2-d1)+"ms"]);
 }
 
 var mouseX = 256;
@@ -137,14 +140,22 @@ CanvasPoint.toUnitX = function CanvasPoint_toUnitX(x) {
   return ux;
 };
 
+CanvasPoint.toUnitXscaled = function CanvasPoint_toUnitX(x, scaleBy) {
+  var W = current_canvas_vec.x;
+  var ux = x * (scaleBy / W);
+  return ux;
+};
+
 CanvasPoint.toUnitY = function CanvasPoint_toUnitY(y) {
   var H = current_canvas_vec.y;
   var uy = (H - y) / H;
   return uy;
 };
 
-CanvasPoint.prototype.toUnitPt = function CanvasPoint_toUnitPt() {
-  return new UnitPoint(CanvasPoint.toUnitX(this.x), CanvasPoint.toUnitY(this.y));
+CanvasPoint.toUnitYscaled = function CanvasPoint_toUnitY(y, scaleBy) {
+  var H = current_canvas_vec.y;
+  var uy = (H - y) * (scaleBy / H);
+  return uy;
 };
 
 UnitPoint.prototype.toCanvasPt = function UnitPoint_toCanvasPt() {
@@ -157,14 +168,14 @@ UnitPoint.prototype.toCanvasPt = function UnitPoint_toCanvasPt() {
 
 CanvasPoint.toAbsX = function CanvasPoint_toAbsX(x, focus) {
   focus = focus || current_focus;
-  var nx = CanvasPoint.toUnitX(x);
-  return focus.origin.x + nx * focus.width();
+  var nx = CanvasPoint.toUnitXscaled(x, focus.width());
+  return focus.origin.x + nx;
 };
 
 CanvasPoint.toAbsY = function CanvasPoint_toAbsY(y, focus) {
   focus = focus || current_focus;
-  var ny = CanvasPoint.toUnitY(y);
-  return focus.origin.y + ny * focus.height();
+  var ny = CanvasPoint.toUnitYscaled(y, focus.height());
+  return focus.origin.y + ny;
 };
 
 CanvasPoint.prototype.toAbsPt = function CanvasPoint_toAbsPt(focus) {
@@ -272,7 +283,7 @@ var circles =
    {r: 45, x: 205, y:  50, c:0x0FF0FF},
    {r: 45, x: 105, y:  50, c:0x0FF0FF},
    {r: 45, x:  25, y:  50, c:0x0FF0FF},
-   {r: 10, x: -16, y:150, c:0xF0FF0F}
+   {r: 10, x: -16, y: 150, c:0xF0FF0F}
   ];
 
 function insideP(x, y, c) {
@@ -280,48 +291,69 @@ function insideP(x, y, c) {
 }
 
 function itercountToColor(n) {
+  if (n == maxIters) return 0;
+  n = (n % maxColorMapSize);
+
   if (colorMap) return colorMap[n];
 
-  var block = 0xFFF;
-  var chip_0 = n & 0x00007;
-  var chip_1 = n & 0x00038;
-  var chip_2 = n & 0x001C0;
-  var chip_3 = n & 0x00E00;
-  var chip_4 = n & 0x07000;
-  var chip_5 = n & 0x38000;
+  var n0 = (n & (0xF <<  0)) >>  0;
+  var n1 = (n & (0xF <<  4)) >>  4;
+  var n2 = (n & (0xF <<  8)) >>  8;
+  var n3 = (n & (0xF << 12)) >> 12;
 
-  var offset_0 =   6;
-  var offset_1 =  -3;
-  var offset_2 =   0;
-  var offset_3 =   0;
-  var offset_4 = -12;
-  var offset_5 =   0;
-  return ((n & chip_0 << offset_0) |
-          (n & chip_1 << offset_1) |
-          (n & chip_2 << offset_2) |
-          (n & chip_3 << offset_3) |
-          (n & chip_4 << offset_4) |
-          (n & chip_5 << offset_5) );
+  var s0 = (n0);// & ((n <= 0xF) ? 0xF : 0x0) ;
+  var s1 = (n1 ^ s0);// & ((n <= 0xFF) ? 0xF : 0x0) ;
+  var s2 = (n2 ^ s1);// & ((n <= 0xFFF) ? 0xF : 0x0) ;
+  var s3 = (n3 ^ s2) & 0xF;
+
+  var c0 = ((s0 & 0x1 << 0) |
+            (s0 & 0x2 << 7) |
+            (s0 & 0xC << 14));
+
+  var c1 = ((n1 & 0x1 << 0)  |
+            (n1 & 0x2 << 7) |
+            (n1 & 0xC << 14));
+
+  var c2 = ((n2 & 0x1 << 0) |
+            (n2 & 0x2 << 7) |
+            (n2 & 0xC << 14));
+
+  var c3 = ((n3 & 0x1 << 0)  |
+            (n3 & 0x2 << 7) |
+            (n3 & 0xC << 14));
+
+  var ret = (c0 <<  7 |
+             c1 << 14 |
+             c2 << 21 |
+             c3 <<  0);
+
+  // colorMap[n] = ret;
+  return ret;
 }
 
-var maxItersBound = 256 * 4;
-var maxItersStart = 128;
+var hitMaxRedrawTime = false;
+var maxItersBound = 256 * 256 * 16;
+var maxItersStart = 64;
 var maxIters = maxItersStart;
 
+var maxColorMapSize = 256 * 256;
+
 var colorMap = undefined;
+function needBiggerColorMap() {
+  return Math.min(maxColorMapSize, maxIters+1 > colorMap.length);
+}
+
 function buildColorMap(maxIters) {
   colorMap = undefined;
   var cMap = new Array;
-  for (var i = 0; i < maxIters+1; i++) {
+  var lim = Math.min(maxColorMapSize, maxIters+1);
+  for (var i = 0; i < lim; i++) {
     cMap[i] = itercountToColor(i);
   }
   colorMap = cMap;
 }
 
 function kernel(x, y) {
-  if (false) for (var i = 0; i < circles.length; i++) {
-    if (insideP(p_x, p_y, circles[i])) return circles[i].c;
-  }
   var p_x = CanvasPoint.toAbsX(x);
   var p_y = CanvasPoint.toAbsY(y);
   var Cr = p_x;
@@ -344,17 +376,43 @@ function getCanvasHtm() {
   return canvas;
 }
 
-function iterate() {
-  if (maxIters < maxItersBound) {
+function iterate_step1() {
+  enqueuedIterate = false;
+  if (!hitMaxRedrawTime && maxIters < maxItersBound) {
+    var d1 = new Date();
     maxIters = maxIters << 1;
-    colorMap = undefined;
-    redraw();
+    if (needBiggerColorMap()) {
+      buildColorMap(maxIters);
+    }
+    var d2 = new Date();
+    if (d2 - d1 > 4000) {
+      window.setTimeout(iterate_step2, 10);
+    } else {
+      iterate_step2_rest(d1);
+    }
+  }
+}
+
+function iterate_step2() {
+  var d1 = new Date();
+  iterate_step2_rest(d1);
+}
+
+function iterate_step2_rest(d1) {
+  redraw();
+  var d2 = new Date();
+  if ((d2 - d1) > 5000) {
+    hitMaxRedrawTime = true;
+    reportWriteJx("hit max redraw time: " + (d2 - d1)/1000 + "s");
   }
   establishPeriodicRefinement();
 }
 
+var enqueuedIterate = false;
 function establishPeriodicRefinement() {
-  window.setTimeout(function() { iterate(); }, 1000);
+  if (enqueuedIterate) return;
+  window.setTimeout(iterate_step1, 1000);
+  enqueuedIterate = true;
 }
 
 function renderHtm() {
@@ -387,7 +445,8 @@ function render() {
 }
 
 function pageload() {
-    buildColorMap(maxIters);
+    // buildColorMap(maxIters);
+    buildColorMap(maxColorMapSize);
     redraw();
     var canvas = getCanvasHtm();
     canvas.addEventListener("mousemove", onMouseMove, false);
@@ -403,9 +462,17 @@ function onMouseMove(e) {
     writeResult(canvas, picture);
 }
 
+function resetRefinement() {
+  hitMaxRedrawTime = false;
+  // if (maxIters >= maxItersBound) {
+    establishPeriodicRefinement();
+  // }
+  maxIters = maxItersStart;
+  reportResetOutput();
+}
+
 function redraw() {
     render();
-    reportWriteJx(["div", ["small", " drawn, maxIters:"+maxIters]]);
 }
 
 function onMouseClick(e) {
@@ -416,6 +483,7 @@ function onMouseClick(e) {
     var cur = new CanvasPoint(mouseX + sqrad, mouseY - sqrad);
     var new_focus = new Focus(cbl.toAbsPt(), cur.toAbsPt().sub(cbl.toAbsPt()));
     current_focus = new_focus;
-    maxIters = maxItersStart;
+    resetRefinement();
+    reportWriteJx(["code", "focus:"+current_focus]);
     redraw();
 }
