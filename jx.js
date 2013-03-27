@@ -35,3 +35,10 @@ function divWriteJx(id, jx) {
     var e = jxToElem(jx);
     elem.appendChild(e);
 }
+
+function divResetJx(id) {
+  var elem = document.getElementById(id);
+  while (elem.firstChild) {
+    elem.removeChild(elem.firstChild);
+  }
+}
