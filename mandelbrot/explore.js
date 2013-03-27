@@ -15,6 +15,7 @@ function Fake2DParallelArray(w, h, f, ignored) {
 
 Fake2DParallelArray.prototype.flatten = function() { return this; };
 Fake2DParallelArray.prototype.getArray = function() { return this.array; };
+ParallelArray.prototype.getArray = function() { return this.buffer; };
 
 function reportWriteJx(jx) { divWriteJx("report", jx); }
 function reportResetOutput() { divResetJx("report"); }
@@ -291,8 +292,8 @@ function insideP(x, y, c) {
 }
 
 function itercountToColor(n) {
-  if (n == maxIters) return 0;
-  n = (n % maxColorMapSize);
+  if (n == maxIters) return 0x0;
+  n = (n % (maxColorMapSize-1))+1;
 
   if (colorMap) return colorMap[n];
 
@@ -421,10 +422,23 @@ function renderHtm() {
     var mode = "html";
     picture =
       new Fake2DParallelArray(canvas.width, canvas.height, function (x,y) {
-        return kernel(x, y); }, { mode: mode, expect: "any" } );
+        return kernel(x, y); }, { mode: "par", expect: "seq" } );
     var d2 = new Date();
     writeResult(canvas, picture);
     reportTiming("Htm", d1, d2);
+    return (d2 - d1);
+}
+
+function renderPjs() {
+    var canvas = getCanvasHtm();
+    var d1 = new Date();
+    var mode = "par";
+    picture =
+      new ParallelArray([canvas.width, canvas.height], function (x,y) {
+        return kernel(x, y); }); // , { mode: "seq", expect: "any" } );
+    var d2 = new Date();
+    writeResult(canvas, picture);
+    reportTiming("PJS", d1, d2);
     return (d2 - d1);
 }
 
@@ -440,7 +454,11 @@ function sigfigs(x, decimals) {
 }
 
 function render() {
-    var htmTime = renderHtm();
+    if (document.getElementById("pjs-render").checked) {
+      var pjsTime = renderPjs();
+    } else {
+      var htmTime = renderHtm();
+    }
     // divWriteJx("kernelsource", ['pre', ""+computeSet]);
 }
 
