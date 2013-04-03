@@ -26,6 +26,9 @@ function reportTiming(variant, d1, d2) {
                  " time: "+(d2-d1)+"ms"]);
 }
 
+var maxItersStart = 64;
+var maxIters = maxItersStart;
+
 var mouseX = 256;
 var mouseY = 0;
 
@@ -135,8 +138,8 @@ CanvasPoint.prototype.moveOn = function CanvasPoint_move (c) c.moveTo(this.x, th
 var current_canvas_vec = undefined;
 var current_focus =
   (function () {
-     var initial_origin = new AbsPoint(-1.5,-2);
-     var other_corner = new AbsPoint(1,0);
+     var initial_origin = new AbsPoint(-1.5,-1);
+     var other_corner = new AbsPoint(0.5,1);
      var initial_vector = other_corner.sub(initial_origin);
      return new Focus(initial_origin, initial_vector);
    })();
@@ -200,9 +203,6 @@ AbsPoint.prototype.toCanvasPt = function AbsPoint_toCanvasPt(focus) {
 
 var picture;
 
-// the below code is based on a WebCL implementation available at
-// http://www.ibiblio.org/e-notes/webcl/mandelbrot.html
-
 var nc = 30;
 
 var sqrad = 150;
@@ -250,7 +250,7 @@ function writeResult (canvas, picture) {
     context.stroke();
     context.closePath();
 
-  if (false) {
+  if (true) {
     context.beginPath();
     context.strokeStyle = "blue";
     context.lineWidth = 3;
@@ -280,86 +280,6 @@ function writeResult (canvas, picture) {
   }
 }
 
-var circles =
-  [{r: 30, x:   0, y:   0, c:0x000FFF},
-   {r: 40, x:-201, y:  10, c:0x00000F},
-   {r: 40, x: 142, y: 100, c:0x0000FF},
-   {r: 30, x:-103, y: 200, c:0x000FFF},
-   {r: 30, x:-203, y:-100, c:0x000FFF},
-   {r: 20, x: 204, y:-250, c:0x00FFFF},
-   {r: 45, x: 205, y:  50, c:0x0FF0FF},
-   {r: 45, x: 105, y:  50, c:0x0FF0FF},
-   {r: 45, x:  25, y:  50, c:0x0FF0FF},
-   {r: 10, x: -16, y: 150, c:0xF0FF0F}
-  ];
-
-function insideP(x, y, c) {
-  return sqr(c.x - x) + sqr(c.y - y) < sqr(c.r);
-}
-
-function itercountToColor(n) {
-  if (n == maxIters) return 0x0;
-  n = (n % (maxColorMapSize-1))+1;
-
-  if (colorMap) return colorMap[n];
-
-  var n0 = (n & (0xF <<  0)) >>  0;
-  var n1 = (n & (0xF <<  4)) >>  4;
-  var n2 = (n & (0xF <<  8)) >>  8;
-  var n3 = (n & (0xF << 12)) >> 12;
-
-  var s0 = (n0);// & ((n <= 0xF) ? 0xF : 0x0) ;
-  var s1 = (n1 ^ s0);// & ((n <= 0xFF) ? 0xF : 0x0) ;
-  var s2 = (n2 ^ s1);// & ((n <= 0xFFF) ? 0xF : 0x0) ;
-  var s3 = (n3 ^ s2) & 0xF;
-
-  var c0 = ((s0 & 0x1 << 0) |
-            (s0 & 0x2 << 7) |
-            (s0 & 0xC << 14));
-
-  var c1 = ((n1 & 0x1 << 0)  |
-            (n1 & 0x2 << 7) |
-            (n1 & 0xC << 14));
-
-  var c2 = ((n2 & 0x1 << 0) |
-            (n2 & 0x2 << 7) |
-            (n2 & 0xC << 14));
-
-  var c3 = ((n3 & 0x1 << 0)  |
-            (n3 & 0x2 << 7) |
-            (n3 & 0xC << 14));
-
-  var ret = (c0 <<  7 |
-             c1 << 14 |
-             c2 << 21 |
-             c3 <<  0);
-
-  // colorMap[n] = ret;
-  return ret;
-}
-
-var hitMaxRedrawTime = false;
-var maxItersBound = 256 * 256 * 16;
-var maxItersStart = 64;
-var maxIters = maxItersStart;
-
-var maxColorMapSize = 256 * 256;
-
-var colorMap = undefined;
-function needBiggerColorMap() {
-  return Math.min(maxColorMapSize, maxIters+1 > colorMap.length);
-}
-
-function buildColorMap(maxIters) {
-  colorMap = undefined;
-  var cMap = new Array;
-  var lim = Math.min(maxColorMapSize, maxIters+1);
-  for (var i = 0; i < lim; i++) {
-    cMap[i] = itercountToColor(i);
-  }
-  colorMap = cMap;
-}
-
 function getCanvasHtm() {
   var canvas = document.getElementById("canvasHtm");
   if (!current_canvas_vec
@@ -375,7 +295,7 @@ function renderHtm() {
     var d1 = new Date();
     var mode = "html";
     picture =
-      new Fake2DParallelArray(canvas.height, canvas.width, function (y,x) {
+      new Fake2DParallelArray(canvas.width, canvas.height, function (x,y) {
         return kernel(x, y); }, { mode: "par", expect: "seq" } );
     var d2 = new Date();
     writeResult(canvas, picture);
@@ -431,4 +351,13 @@ function onMouseMove(e) {
 
 function redraw() {
     render();
+}
+
+function zoomOut() {
+  var origin = current_focus.origin;
+  var vec = current_focus.vec;
+  // var new_origin = new Vec(origin.x - vec.x, origin.y - vec.y);
+  var new_origin = origin.sub(vec.div(2));
+  var new_focus = new Focus(new_origin, vec.mul(2));
+  current_focus = new_focus;
 }
