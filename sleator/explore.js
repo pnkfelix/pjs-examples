@@ -2,13 +2,13 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-function Fake2DParallelArray(h, w, f, ignored) {
+function Fake2DParallelArray(w, h, f, ignored) {
     this.width = w;
     this.height = h;
     this.array = new Array(w * h);
     for (var x = 0; x < w; x++) {
       for (var y = 0; y < h; y++) {
-            this.array[y*w + x] = f(x, y);
+            this.array[x*h + y] = f(x, y);
         }
     }
 }
@@ -135,8 +135,8 @@ CanvasPoint.prototype.moveOn = function CanvasPoint_move (c) c.moveTo(this.x, th
 var current_canvas_vec = undefined;
 var current_focus =
   (function () {
-     var initial_origin = new AbsPoint(-1.5,-2);
-     var other_corner = new AbsPoint(1,0);
+     var initial_origin = new AbsPoint(-1.0,-1.0);
+     var other_corner = new AbsPoint(2,2);
      var initial_vector = other_corner.sub(initial_origin);
      return new Focus(initial_origin, initial_vector);
    })();
@@ -250,7 +250,7 @@ function writeResult (canvas, picture) {
     context.stroke();
     context.closePath();
 
-  if (false) {
+  if (true) {
     context.beginPath();
     context.strokeStyle = "blue";
     context.lineWidth = 3;
@@ -281,16 +281,17 @@ function writeResult (canvas, picture) {
 }
 
 var circles =
-  [{r: 30, x:   0, y:   0, c:0x000FFF},
-   {r: 40, x:-201, y:  10, c:0x00000F},
-   {r: 40, x: 142, y: 100, c:0x0000FF},
-   {r: 30, x:-103, y: 200, c:0x000FFF},
-   {r: 30, x:-203, y:-100, c:0x000FFF},
-   {r: 20, x: 204, y:-250, c:0x00FFFF},
-   {r: 45, x: 205, y:  50, c:0x0FF0FF},
-   {r: 45, x: 105, y:  50, c:0x0FF0FF},
-   {r: 45, x:  25, y:  50, c:0x0FF0FF},
-   {r: 10, x: -16, y: 150, c:0xF0FF0F}
+  [
+   {r: 0.30, x:   0, y:   0, c:0x000FFF},
+   {r: 0.40, x:-0.201, y:  0.10, c:0x00000F},
+   {r: 0.40, x: 0.142, y: 0.100, c:0x0000FF},
+   {r: 0.30, x:-0.103, y: 0.200, c:0x000FFF},
+   {r: 0.30, x:-0.203, y:-0.100, c:0x000FFF},
+   {r: 0.20, x: 0.204, y:-0.250, c:0x00FFFF},
+   {r: 0.45, x: 0.205, y:  0.50, c:0x0FF0FF},
+   {r: 0.45, x: 0.105, y:  0.50, c:0x0FF0FF},
+   {r: 0.45, x:  0.25, y:  0.50, c:0x0FF0FF},
+   {r: 0.10, x: 0.00, y: 0.00, c:0xF0FF0F}
   ];
 
 function insideP(x, y, c) {
@@ -361,16 +362,21 @@ function buildColorMap(maxIters) {
 }
 
 function kernel(x, y) {
-  var p_x = CanvasPoint.toAbsX(x);
-  var p_y = CanvasPoint.toAbsY(y);
+  var cp = new CanvasPoint(x,y);
+  var ap = cp.toAbsPt();
+  var p_x = ap.x;
+  var p_y = ap.y;
+  //var p_x = CanvasPoint.toAbsX(x);
+  //var p_y = CanvasPoint.toAbsY(y);
   var Cr = p_x;
   var Ci = p_y;
   var I=0, R=0, I2=0, R2=0;
   var n=0;
-  while ( (R2+I2 < 2.0) && (n < maxIters) ){
-    I = (R+R)*I+Ci; R=R2-I2+Cr;  R2=R*R;  I2=I*I;  n++;
+  for (var i=0; i < circles.length; i++) {
+    if (insideP(p_x, p_y, circles[i]))
+      return circles[i].c;
   }
-  return itercountToColor(n);
+  return 0;
 }
 
 function getCanvasHtm() {
@@ -499,8 +505,8 @@ function zoomOut() {
   var origin = current_focus.origin;
   var vec = current_focus.vec;
   // var new_origin = new Vec(origin.x - vec.x, origin.y - vec.y);
-  var new_origin = origin.sub(vec);
-  var new_focus = new Focus(new_origin, vec.mul(4));
+  var new_origin = origin.sub(vec.div(2));
+  var new_focus = new Focus(new_origin, vec.mul(2));
   current_focus = new_focus;
 }
 
@@ -528,6 +534,7 @@ function onMouseClick(e) {
     var canvas = getCanvasHtm();
     mouseX = e.clientX - canvas.offsetLeft;
     mouseY = e.clientY - canvas.offsetTop;
+    var center = new CanvasPoint(mouseX, mouseY);
     var ctl = new CanvasPoint(mouseX - sqrad, mouseY - sqrad);
     var ctr = new CanvasPoint(mouseX + sqrad, mouseY - sqrad);
     var cbl = new CanvasPoint(mouseX - sqrad, mouseY + sqrad);

@@ -360,19 +360,6 @@ function buildColorMap(maxIters) {
   colorMap = cMap;
 }
 
-function kernel(x, y) {
-  var p_x = CanvasPoint.toAbsX(x);
-  var p_y = CanvasPoint.toAbsY(y);
-  var Cr = p_x;
-  var Ci = p_y;
-  var I=0, R=0, I2=0, R2=0;
-  var n=0;
-  while ( (R2+I2 < 2.0) && (n < maxIters) ){
-    I = (R+R)*I+Ci; R=R2-I2+Cr;  R2=R*R;  I2=I*I;  n++;
-  }
-  return itercountToColor(n);
-}
-
 function getCanvasHtm() {
   var canvas = document.getElementById("canvasHtm");
   if (!current_canvas_vec
@@ -381,45 +368,6 @@ function getCanvasHtm() {
     current_canvas_vec = new Vec(canvas.width, canvas.height);
   }
   return canvas;
-}
-
-function iterate_step1() {
-  enqueuedIterate = false;
-  if (!hitMaxRedrawTime && maxIters < maxItersBound) {
-    var d1 = new Date();
-    maxIters = maxIters << 1;
-    if (needBiggerColorMap()) {
-      buildColorMap(maxIters);
-    }
-    var d2 = new Date();
-    if (d2 - d1 > 4000) {
-      window.setTimeout(iterate_step2, 10);
-    } else {
-      iterate_step2_rest(d1);
-    }
-  }
-}
-
-function iterate_step2() {
-  var d1 = new Date();
-  iterate_step2_rest(d1);
-}
-
-function iterate_step2_rest(d1) {
-  redraw();
-  var d2 = new Date();
-  if ((d2 - d1) > 5000) {
-    hitMaxRedrawTime = true;
-    reportWriteJx("hit max redraw time: " + (d2 - d1)/1000 + "s");
-  }
-  establishPeriodicRefinement();
-}
-
-var enqueuedIterate = false;
-function establishPeriodicRefinement() {
-  if (enqueuedIterate) return;
-  window.setTimeout(iterate_step1, 1000);
-  enqueuedIterate = true;
 }
 
 function renderHtm() {
@@ -473,17 +421,6 @@ function render() {
     // divWriteJx("kernelsource", ['pre', ""+computeSet]);
 }
 
-function pageload() {
-    // buildColorMap(maxIters);
-    buildColorMap(maxColorMapSize);
-    redraw();
-    var canvas = getCanvasHtm();
-    canvas.addEventListener("mousemove", onMouseMove, false);
-    canvas.addEventListener("click", onMouseClick, false);
-    window.addEventListener("keydown", onKey, true);
-    establishPeriodicRefinement();
-}
-
 function onMouseMove(e) {
     var canvas = getCanvasHtm();
     mouseX = e.clientX - canvas.offsetLeft;
@@ -492,49 +429,6 @@ function onMouseMove(e) {
     writeResult(canvas, picture);
 }
 
-function zoomOut() {
-  // This isn't "right" (I'd prefer we remain centered rather than shifting
-  // the image over) but my naive attempts to do that quickly have not worked,
-  // so making do with this while I move on to more pressing issues.
-  var origin = current_focus.origin;
-  var vec = current_focus.vec;
-  // var new_origin = new Vec(origin.x - vec.x, origin.y - vec.y);
-  var new_origin = origin.sub(vec);
-  var new_focus = new Focus(new_origin, vec.mul(4));
-  current_focus = new_focus;
-}
-
-function onKey(e) {
-  reportWriteJx(["code", "key "+e.keyCode]);
-  switch (e.keyCode) {
-    case 173: zoomOut(); resetRefinement(); redraw();
-  }
-}
-
-function resetRefinement() {
-  hitMaxRedrawTime = false;
-  // if (maxIters >= maxItersBound) {
-    establishPeriodicRefinement();
-  // }
-  maxIters = maxItersStart;
-  reportResetOutput();
-}
-
 function redraw() {
     render();
-}
-
-function onMouseClick(e) {
-    var canvas = getCanvasHtm();
-    mouseX = e.clientX - canvas.offsetLeft;
-    mouseY = e.clientY - canvas.offsetTop;
-    var ctl = new CanvasPoint(mouseX - sqrad, mouseY - sqrad);
-    var ctr = new CanvasPoint(mouseX + sqrad, mouseY - sqrad);
-    var cbl = new CanvasPoint(mouseX - sqrad, mouseY + sqrad);
-    var cbr = new CanvasPoint(mouseX + sqrad, mouseY + sqrad);
-    var new_focus = new Focus(cbl.toAbsPt(), ctr.toAbsPt().sub(cbl.toAbsPt()));
-    current_focus = new_focus;
-    resetRefinement();
-    reportWriteJx(["code", "focus:"+current_focus]);
-    redraw();
 }
