@@ -28,8 +28,6 @@
 "use strict";
 
 // configurable options
-var imageSrc = "tower.jpg";
-// var imageSrc = "squares-pico.png";
 var previewSteps = 2;
 var recompileThreshold = 100; // experiments show 100 is a good threshold
 
@@ -40,10 +38,12 @@ var theCanvas = document.getElementById('theCanvas');
 var theContext = theCanvas.getContext('2d');
 var theImage = new Image();
 var theButtons = [];
+theButtons.push(document.getElementById('btnChooseImage'));
 theButtons.push(document.getElementById('btnResize'));
 theButtons.push(document.getElementById('impl'));
 theButtons.push(document.getElementById('btnReset'));
 theButtons.push(document.getElementById('btnHalve'));
+var chooseImage = document.getElementById('chooseImage');
 var originalData;
 var virtualWidth;
 var virtualHeight;
@@ -146,7 +146,11 @@ function resetEvents() {
 function inProgress(state) {
     theButtons.forEach(function(b) { b.disabled = state;});
 }
-    
+
+function changeImage() {
+  theImage.src = chooseImage.value;
+}
+
 function reset() {
     inProgress(true);
     theCanvas.width = theImage.width;
@@ -269,4 +273,4 @@ function remove_cont() {
 
 // initialise the GUI at startup
 theImage.onload = reset;
-theImage.src = imageSrc;
+theImage.src = chooseImage.value;
