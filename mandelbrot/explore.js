@@ -101,10 +101,21 @@ function iterate_step2() {
   iterate_step2_rest(d1);
 }
 
+max_redraw_time = undefined;
+max_redraw_time_basis = 500;
+max_redraw_time_slowdown_multiple = 1;
+refresh_period = 10;
+
+function maxRedrawTime() {
+  if (!max_redraw_time)
+    max_redraw_time = usePjsRendering() ? max_redraw_time_basis : max_redraw_time_basis * max_redraw_time_slowdown_multiple;
+  return max_redraw_time;
+}
+
 function iterate_step2_rest(d1) {
   redraw();
   var d2 = new Date();
-  if ((d2 - d1) > 5000) {
+  if ((d2 - d1) > maxRedrawTime()) {
     hitMaxRedrawTime = true;
     reportWriteJx("hit max redraw time: " + (d2 - d1)/1000 + "s");
   }
@@ -114,7 +125,7 @@ function iterate_step2_rest(d1) {
 var enqueuedIterate = false;
 function establishPeriodicRefinement() {
   if (enqueuedIterate) return;
-  window.setTimeout(iterate_step1, 1000);
+  window.setTimeout(iterate_step1, refresh_period);
   enqueuedIterate = true;
 }
 
@@ -126,6 +137,7 @@ function pageload() {
     canvas.addEventListener("mousemove", onMouseMove, false);
     canvas.addEventListener("click", onMouseClick, false);
     window.addEventListener("keydown", onKey, true);
+    document.getElementById("pjs-render").onchange = resetRefinement;
     establishPeriodicRefinement();
 }
 
@@ -138,6 +150,7 @@ function onKey(e) {
 
 function resetRefinement() {
   hitMaxRedrawTime = false;
+  max_redraw_time = usePjsRendering() ? max_redraw_time_basis : max_redraw_time_basis * max_redraw_time_slowdown_multiple;
   // if (maxIters >= maxItersBound) {
     establishPeriodicRefinement();
   // }

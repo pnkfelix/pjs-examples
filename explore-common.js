@@ -332,8 +332,12 @@ function sigfigs(x, decimals) {
     return (possign?"":"-")+integ + "." + suffix;
 }
 
+function usePjsRendering() {
+  return document.getElementById("pjs-render").checked;
+}
+
 function render() {
-    if (document.getElementById("pjs-render").checked) {
+    if (usePjsRendering()) {
       var pjsTime = renderPjs();
     } else {
       var htmTime = renderHtm();
