@@ -102,7 +102,7 @@ function detectEdgesJS(buf, context) {
                 for (var offX = -1; offX <= 1; offX++) {
                     var newX = x + offX;
                     if ((newX >= 0) && (newX < width) && (newY >= 0) && (newY < height)) {
-                        var pointIndex = (x + offX + (y + offY) * buf.width) * 4;
+                        var pointIndex = (x + offX + (y + offY) * width) * 4;
                         var e = data[pointIndex];
                         totalX += e * sobelX[offY + 1][offX + 1];
                         totalY += e * sobelY[offY + 1][offX + 1];
@@ -110,7 +110,7 @@ function detectEdgesJS(buf, context) {
                 }
             }
             var total = Math.floor((Math.abs(totalX) + Math.abs(totalY))/8.0);
-            var index = (x + y * buf.width) * 4;
+            var index = (x + y * width) * 4;
             data1[index] = total;
             data1[index+1] = total;
             data1[index+2] = total;
@@ -130,7 +130,7 @@ function computeEnergyJS(buf) {
     var data = buf.data;
     for (var y = 0; y < height; y++) {
         for (var x = 0; x < width; x++) {
-            var e = data[(x + y * buf.width) * 4];
+            var e = data[(x + y * width) * 4];
 
             // find min of energy above
             if (y >= 1) {
@@ -189,13 +189,13 @@ function cutPathHorizontallyJS(buf, path) {
     for (y = 0; y < height; y++) { // for all rows
         var cutX = path[y];
         var blendX = (cutX == 0 ? cutX + 1 : cutX - 1);
-        var cutIndex = (cutX + y * buf.width) * 4; // getPixelIndex(cutX, y);
-        var blendIndex = (blendX + y * buf.width) * 4; //getPixelIndex(blendX, y);
+        var cutIndex = (cutX + y * width) * 4; // getPixelIndex(cutX, y);
+        var blendIndex = (blendX + y * width) * 4; //getPixelIndex(blendX, y);
         data[cutIndex] = (data[cutIndex] + data[blendIndex])/2;
         data[cutIndex+1] = (data[cutIndex+1] + data[blendIndex+1])/2;
         data[cutIndex+2] = (data[cutIndex+2] + data[blendIndex+2])/2;
     
-        var lastIndex = (width - 2 + y * buf.width) * 4; // getPixelIndex(width - 2, y);
+        var lastIndex = (width - 2 + y * width) * 4; // getPixelIndex(width - 2, y);
 
         for (var i = cutIndex + 4; i < lastIndex; i += 4) {
             data[i] = data[i+4];
@@ -219,13 +219,13 @@ function cutPathVerticallyJS(buf, path) {
     for (x = 0; x < width; x++) { // for all cols
         var cutY = path[x];
         var blendY = (cutY == 0 ? cutY + 1 : cutY - 1);
-        var cutIndex = (x + cutY * buf.width) * 4; //getPixelIndex(x, cutY);
-        var blendIndex = (x + blendY * buf.width) * 4; //getPixelIndex(x, blendY);
+        var cutIndex = (x + cutY * width) * 4; //getPixelIndex(x, cutY);
+        var blendIndex = (x + blendY * width) * 4; //getPixelIndex(x, blendY);
         data[cutIndex] = (data[cutIndex] + data[blendIndex])/2;
         data[cutIndex+1] = (data[cutIndex+1] + data[blendIndex+1])/2;
         data[cutIndex+2] = (data[cutIndex+2] + data[blendIndex+2])/2;
     
-        var lastIndex = (x + (height - 2) * buf.width) * 4; //getPixelIndex(x, height - 2);
+        var lastIndex = (x + (height - 2) * width) * 4; //getPixelIndex(x, height - 2);
 
         for (var i = cutIndex + rowStride; i < lastIndex; i += rowStride) {
             data[i] = data[i+rowStride];
@@ -245,12 +245,16 @@ function transposeJS(buf, context) {
     var data = buf.data;
     var data1 = buf1.data;
     var ypos = 0;
-    for (var y = 0; y < buf.height; y++) {
-        for (var x = 0; x < buf.width; x++) {
-            data1[x*buf1.width*4 + y*4] = data[y*buf.width*4 + x*4];
-            data1[x*buf1.width*4 + y*4 +1] = data[y*buf.width*4 + x*4 +1];
-            data1[x*buf1.width*4 + y*4 +2] = data[y*buf.width*4 + x*4 +2];
-            data1[x*buf1.width*4 + y*4 +3] = data[y*buf.width*4 + x*4 +3];
+    var height = buf.height;
+    var height1 = buf1.height;
+    var width = buf.width;
+    var width1 = buf1.width;
+    for (var y = 0; y < height; y++) {
+        for (var x = 0; x < width; x++) {
+            data1[x*width1*4 + y*4] = data[y*width*4 + x*4];
+            data1[x*width1*4 + y*4 +1] = data[y*width*4 + x*4 +1];
+            data1[x*width1*4 + y*4 +2] = data[y*width*4 + x*4 +2];
+            data1[x*width1*4 + y*4 +3] = data[y*width*4 + x*4 +3];
         }
         //ypos += buf.width*4;
     }
@@ -395,7 +399,7 @@ function detectEdgesAR(data, context) {
                 for (var offX = -1; offX <= 1; offX++) {
                     var newX = x + offX;
                     if ((newX >= 0) && (newX < width) && (newY >= 0) && (newY < height)) {
-                        var pointIndex = x + offX + (y + offY) * data.width;
+                        var pointIndex = x + offX + (y + offY) * width;
                         var e = data[pointIndex];
                         totalX += e * sobelX[offY + 1][offX + 1];
                         totalY += e * sobelY[offY + 1][offX + 1];
@@ -403,7 +407,7 @@ function detectEdgesAR(data, context) {
                 }
             }
             var total = Math.floor((Math.abs(totalX) + Math.abs(totalY))/8.0);
-            var index = x + y * data.width;
+            var index = x + y * width;
             data1[index] = total;
         }
     }
@@ -420,7 +424,7 @@ function computeEnergyAR(buf) {
     var data = buf;
     for (var y = 0; y < height; y++) {
         for (var x = 0; x < width; x++) {
-            var e = data[x + y * buf.width];
+            var e = data[x + y * width];
 
             // find min of energy above
             if (y >= 1) {
@@ -479,13 +483,13 @@ function cutPathHorizontallyAR(buf, path) {
     for (y = 0; y < height; y++) { // for all rows
         var cutX = path[y];
         var blendX = (cutX == 0 ? cutX + 1 : cutX - 1);
-        var cutIndex = (cutX + y * buf.width) * 4; // getPixelIndex(cutX, y);
-        var blendIndex = (blendX + y * buf.width) * 4; //getPixelIndex(blendX, y);
+        var cutIndex = (cutX + y * width) * 4; // getPixelIndex(cutX, y);
+        var blendIndex = (blendX + y * width) * 4; //getPixelIndex(blendX, y);
         data[cutIndex] = (data[cutIndex] + data[blendIndex])/2;
         data[cutIndex+1] = (data[cutIndex+1] + data[blendIndex+1])/2;
         data[cutIndex+2] = (data[cutIndex+2] + data[blendIndex+2])/2;
     
-        var lastIndex = (width - 2 + y * buf.width) * 4; // getPixelIndex(width - 2, y);
+        var lastIndex = (width - 2 + y * width) * 4; // getPixelIndex(width - 2, y);
 
         for (var i = cutIndex + 4; i < lastIndex; i += 4) {
             data[i] = data[i+4];
@@ -509,13 +513,13 @@ function cutPathVerticallyAR(buf, path) {
     for (x = 0; x < width; x++) { // for all cols
         var cutY = path[x];
         var blendY = (cutY == 0 ? cutY + 1 : cutY - 1);
-        var cutIndex = (x + cutY * buf.width) * 4; //getPixelIndex(x, cutY);
-        var blendIndex = (x + blendY * buf.width) * 4; //getPixelIndex(x, blendY);
+        var cutIndex = (x + cutY * width) * 4; //getPixelIndex(x, cutY);
+        var blendIndex = (x + blendY * width) * 4; //getPixelIndex(x, blendY);
         data[cutIndex] = (data[cutIndex] + data[blendIndex])/2;
         data[cutIndex+1] = (data[cutIndex+1] + data[blendIndex+1])/2;
         data[cutIndex+2] = (data[cutIndex+2] + data[blendIndex+2])/2;
     
-        var lastIndex = (x + (height - 2) * buf.width) * 4; //getPixelIndex(x, height - 2);
+        var lastIndex = (x + (height - 2) * width) * 4; //getPixelIndex(x, height - 2);
 
         for (var i = cutIndex + rowStride; i < lastIndex; i += rowStride) {
             data[i] = data[i+rowStride];
@@ -687,7 +691,7 @@ function detectEdgesTA(buf, context) {
                 for (var offX = -1; offX <= 1; offX++) {
                     var newX = x + offX;
                     if ((newX >= 0) && (newX < width) && (newY >= 0) && (newY < height)) {
-                        var pointIndex = x + offX + (y + offY) * buf.width;
+                        var pointIndex = x + offX + (y + offY) * width;
                         var e = data[pointIndex];
                         totalX += e * sobelX[offY + 1][offX + 1];
                         totalY += e * sobelY[offY + 1][offX + 1];
@@ -695,7 +699,7 @@ function detectEdgesTA(buf, context) {
                 }
             }
             var total = Math.floor((Math.abs(totalX) + Math.abs(totalY))/8.0);
-            var index = x + y * buf.width;
+            var index = x + y * width;
             data1[index] = total;
         }
     }
@@ -712,7 +716,7 @@ function computeEnergyTA(buf) {
     var data = new Uint8Array(buf);
     for (var y = 0; y < height; y++) {
         for (var x = 0; x < width; x++) {
-            var e = data[x + y * buf.width];
+            var e = data[x + y * width];
 
             // find min of energy above
             if (y >= 1) {
@@ -771,13 +775,13 @@ function cutPathHorizontallyTA(buf, path) {
     for (y = 0; y < height; y++) { // for all rows
         var cutX = path[y];
         var blendX = (cutX == 0 ? cutX + 1 : cutX - 1);
-        var cutIndex = (cutX + y * buf.width) * 4; // getPixelIndex(cutX, y);
-        var blendIndex = (blendX + y * buf.width) * 4; //getPixelIndex(blendX, y);
+        var cutIndex = (cutX + y * width) * 4; // getPixelIndex(cutX, y);
+        var blendIndex = (blendX + y * width) * 4; //getPixelIndex(blendX, y);
         data[cutIndex] = (data[cutIndex] + data[blendIndex])/2;
         data[cutIndex+1] = (data[cutIndex+1] + data[blendIndex+1])/2;
         data[cutIndex+2] = (data[cutIndex+2] + data[blendIndex+2])/2;
     
-        var lastIndex = (width - 2 + y * buf.width) * 4; // getPixelIndex(width - 2, y);
+        var lastIndex = (width - 2 + y * width) * 4; // getPixelIndex(width - 2, y);
 
         for (var i = cutIndex + 4; i < lastIndex; i += 4) {
             data[i] = data[i+4];
@@ -801,13 +805,13 @@ function cutPathVerticallyTA(buf, path) {
     for (x = 0; x < width; x++) { // for all cols
         var cutY = path[x];
         var blendY = (cutY == 0 ? cutY + 1 : cutY - 1);
-        var cutIndex = (x + cutY * buf.width) * 4; //getPixelIndex(x, cutY);
-        var blendIndex = (x + blendY * buf.width) * 4; //getPixelIndex(x, blendY);
+        var cutIndex = (x + cutY * width) * 4; //getPixelIndex(x, cutY);
+        var blendIndex = (x + blendY * width) * 4; //getPixelIndex(x, blendY);
         data[cutIndex] = (data[cutIndex] + data[blendIndex])/2;
         data[cutIndex+1] = (data[cutIndex+1] + data[blendIndex+1])/2;
         data[cutIndex+2] = (data[cutIndex+2] + data[blendIndex+2])/2;
     
-        var lastIndex = (x + (height - 2) * buf.width) * 4; //getPixelIndex(x, height - 2);
+        var lastIndex = (x + (height - 2) * width) * 4; //getPixelIndex(x, height - 2);
 
         for (var i = cutIndex + rowStride; i < lastIndex; i += rowStride) {
             data[i] = data[i+rowStride];
